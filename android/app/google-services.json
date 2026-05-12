@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "286291747056",
+    "project_id": "studentcareerguidance-e2d28",
+    "storage_bucket": "studentcareerguidance-e2d28.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:286291747056:android:5eb2bad7f1ada570b52235",
+        "android_client_info": {
+          "package_name": "com.example.my_first_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCThLelGc82GFDZcDkn1eA6eNwrHqfkLU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
