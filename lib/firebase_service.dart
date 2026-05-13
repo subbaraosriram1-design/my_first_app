@@ -41,6 +41,11 @@ class FirebaseService {
   }
 
   User? get currentUser => _auth.currentUser;
+  
+  // For manual login bypass (dev only)
+  String? _manualUserId;
+  void setManualUser(String userId) => _manualUserId = userId;
+  String? get currentUserId => _manualUserId ?? _auth.currentUser?.uid;
 
   // Firestore Resume Operations
   Future<void> saveResume(String userId, Map<String, dynamic> data) async {
@@ -61,6 +66,33 @@ class FirebaseService {
     } catch (e) {
       debugPrint('Firestore Get Error: $e');
       return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getResumeByEmail(String email) async {
+    try {
+      final query = await _firestore.collection('resumes').where('email', isEqualTo: email).limit(1).get();
+      if (query.docs.isNotEmpty) {
+        return query.docs.first.data();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Firestore GetByEmail Error: $e');
+      return null;
+    }
+  }
+
+  Future<bool> updatePasswordByEmail(String email, String newPassword) async {
+    try {
+      final query = await _firestore.collection('resumes').where('email', isEqualTo: email).limit(1).get();
+      if (query.docs.isNotEmpty) {
+        await query.docs.first.reference.update({'password': newPassword});
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Firestore UpdatePassword Error: $e');
+      return false;
     }
   }
 }

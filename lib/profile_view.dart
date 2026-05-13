@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'firebase_service.dart';
-import 'resume_builder_page.dart'; // To use the Experience model
+import 'models.dart'; // To use the Project model
 
 class ProfileView extends StatefulWidget {
   final String username; // Now represents Firebase User ID
@@ -45,7 +45,7 @@ class _ProfileViewState extends State<ProfileView> {
     }
 
     // Firestore stores these as Lists directly
-    final List<dynamic> experienceList = _resumeData!['experience'] ?? [];
+    final List<dynamic> projectList = _resumeData!['projects'] ?? _resumeData!['experience'] ?? [];
     final List<dynamic> skillsList = _resumeData!['skills'] ?? [];
     final List<dynamic> fileList = _resumeData!['fileNames'] ?? [];
 
@@ -65,26 +65,26 @@ class _ProfileViewState extends State<ProfileView> {
             _buildInfoRow('Highest Degree', _resumeData!['education'] ?? 'N/A'),
           ]),
 
-          _buildSectionTitle(Icons.work, 'Work Experience'),
-          if (experienceList.isEmpty)
-            const Padding(padding: EdgeInsets.only(left: 10), child: Text('No experience added.'))
+          _buildSectionTitle(Icons.rocket_launch, 'Projects'),
+          if (projectList.isEmpty)
+            const Padding(padding: EdgeInsets.only(left: 10), child: Text('No projects added.'))
           else
-            ...experienceList.map((expJson) {
+            ...projectList.map((projectJson) {
               try {
-                final exp = Experience.fromJson(expJson as Map<String, dynamic>);
-                final startStr = exp.startDate != null ? DateFormat('MMM yyyy').format(exp.startDate!) : 'N/A';
-                final endStr = exp.endDate != null ? DateFormat('MMM yyyy').format(exp.endDate!) : 'Present';
+                final project = Project.fromJson(projectJson as Map<String, dynamic>);
+                final startStr = project.startDate != null ? DateFormat('MMM yyyy').format(project.startDate!) : 'N/A';
+                final endStr = project.endDate != null ? DateFormat('MMM yyyy').format(project.endDate!) : 'Present';
                 
                 return _buildInfoCard([
-                  Text(exp.jobTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(exp.company, style: const TextStyle(color: Colors.grey)),
+                  Text(project.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(project.description, style: const TextStyle(color: Colors.grey)),
                   const SizedBox(height: 4),
                   Text('$startStr - $endStr', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
                 ]);
               } catch (e) {
                 return const SizedBox.shrink();
               }
-            }).toList(),
+            }),
 
           _buildSectionTitle(Icons.star, 'Skills'),
           if (skillsList.isEmpty)

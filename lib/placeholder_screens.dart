@@ -93,7 +93,7 @@ class _MoreOptionsPageState extends State<MoreOptionsPage> {
                   const SizedBox(height: 24),
                   _buildSection('Education', _buildEducationList()),
                   const SizedBox(height: 24),
-                  _buildSection('Experience', _buildExperienceList()),
+                  _buildSection('Projects', _buildProjectsList()),
                   const SizedBox(height: 24),
                   _buildSection('Hobbies', _buildHobbiesList()),
                 ],
@@ -164,13 +164,13 @@ class _MoreOptionsPageState extends State<MoreOptionsPage> {
     );
   }
 
-  List<Widget> _buildExperienceList() {
-    final experiences = _resumeData?['experience'];
-    if (experiences == null || experiences is! List || experiences.isEmpty) {
-      return [Text('No experience added.', style: GoogleFonts.poppins(color: Colors.grey))];
+  List<Widget> _buildProjectsList() {
+    final projects = _resumeData?['projects'] ?? _resumeData?['experience'];
+    if (projects == null || projects is! List || projects.isEmpty) {
+      return [Text('No projects added.', style: GoogleFonts.poppins(color: Colors.grey))];
     }
 
-    return experiences.map<Widget>((exp) {
+    return projects.map<Widget>((proj) {
       return Card(
         margin: const EdgeInsets.only(bottom: 12),
         elevation: 0,
@@ -183,10 +183,10 @@ class _MoreOptionsPageState extends State<MoreOptionsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(exp['jobTitle'] ?? 'N/A', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-              Text(exp['company'] ?? 'N/A', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
+              Text(proj['title'] ?? proj['jobTitle'] ?? 'N/A', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              Text(proj['description'] ?? proj['company'] ?? 'N/A', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
               Text(
-                '${_formatDate(exp['startDate'])} - ${_formatDate(exp['endDate'])}',
+                '${_formatDate(proj['startDate'])} - ${_formatDate(proj['endDate'])}',
                 style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade500),
               ),
             ],
@@ -216,9 +216,9 @@ class _MoreOptionsPageState extends State<MoreOptionsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(edu['school'] ?? 'N/A', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-              Text(edu['degree'] ?? 'N/A', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
+              Text(edu['classOf'] ?? edu['degree'] ?? 'N/A', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
               Text(
-                '${edu['startYear'] ?? ''} - ${edu['endYear'] ?? ''} | ${edu['additionalInfo'] ?? ''}',
+                '${edu['yearFrom'] ?? edu['startYear'] ?? ''} - ${edu['yearTo'] ?? edu['endYear'] ?? ''} | Grade: ${edu['gradeFrom'] ?? edu['additionalInfo'] ?? ''}',
                 style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade500),
               ),
             ],

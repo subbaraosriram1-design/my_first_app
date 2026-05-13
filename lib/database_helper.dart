@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -46,6 +46,9 @@ class DatabaseHelper {
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE resumes ADD COLUMN skills TEXT');
     }
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE resumes RENAME COLUMN experience TO projects');
+    }
   }
 
   Future _createResumeTable(Database db) async {
@@ -55,7 +58,7 @@ class DatabaseHelper {
         fullName TEXT,
         email TEXT,
         education TEXT,
-        experience TEXT,
+        projects TEXT,
         skills TEXT,
         fileNames TEXT,
         FOREIGN KEY (username) REFERENCES users (username)
