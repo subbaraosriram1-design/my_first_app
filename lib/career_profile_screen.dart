@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'firebase_service.dart';
-import 'resume_builder_page.dart';
 import 'placeholder_screens.dart';
 import 'login_page.dart';
 
@@ -46,7 +45,6 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
         if (data['skills'] is List) {
           skills = (data['skills'] as List).map((e) => e.toString()).toList();
         }
-        
         List<String> studentInterests = [];
         if (data['hobbies'] is List) {
           studentInterests = (data['hobbies'] as List).map((e) => e.toString()).toList();
@@ -64,8 +62,8 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
 
         List<String> topSkills = skills.take(4).toList();
         List<String> topHobbies = studentInterests.take(4).toList();
-        List<String> labels = [...topSkills, ...studentInterests.take(4).map((e) => 'Interest $e')];
-        const defaults = ['Skill 1', 'Skill 2', 'Skill 3', 'Skill 4', 'Hobby 1', 'Hobby 2', 'Hobby 3', 'Hobby 4'];
+        List<String> labels = [...topSkills, ...topHobbies.map((e) => 'Interest $e')];
+        const defaults = ['Skill 1', 'Skill 2', 'Skill 3', 'Skill 4', 'Interest 1', 'Interest 2', 'Interest 3', 'Interest 4'];
         for (int i = labels.length; i < 8; i++) {
           labels.add(defaults[i]);
         }
@@ -73,13 +71,14 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
         Map<String, double> progress = {};
         Map<String, List<String>> details = {};
         for (var label in labels) {
+          String cleanLabel = label.startsWith('Interest ') ? label.substring(9) : label;
           if (topSkills.contains(label)) {
             int count = certsBySkill[label]?.length ?? 0;
             progress[label] = (count / 5).clamp(0.0, 1.0);
             details[label] = certsBySkill[label] ?? [];
-          } else if (topHobbies.contains(label)) {
-            progress[label] = 0.0;
-            details[label] = ['Passionate about $label'];
+          } else if (topHobbies.contains(cleanLabel)) {
+            progress[label] = 0.5; // Default progress for interests
+            details[label] = ['Passionate about $cleanLabel'];
           } else {
             progress[label] = 0.0;
             details[label] = [];

@@ -91,11 +91,21 @@ class _MoreOptionsPageState extends State<MoreOptionsPage> {
                     _buildInfoRow('Email', _resumeData?['email']),
                   ]),
                   const SizedBox(height: 24),
+                  _buildSection('Summary', [
+                    Text(_resumeData?['summary'] ?? 'No summary added.', style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87)),
+                  ]),
+                  const SizedBox(height: 24),
+                  _buildSection('Skills', _buildSkillsList()),
+                  const SizedBox(height: 24),
                   _buildSection('Education', _buildEducationList()),
                   const SizedBox(height: 24),
                   _buildSection('Projects', _buildProjectsList()),
                   const SizedBox(height: 24),
-                  _buildSection('Hobbies', _buildHobbiesList()),
+                  _buildSection('Student Interests', _buildInterestsList()),
+                  const SizedBox(height: 24),
+                  _buildSection('Test Scores', _buildTestScoresList()),
+                  const SizedBox(height: 24),
+                  _buildSection('Certifications', _buildCertificationsList()),
                 ],
               ),
             ),
@@ -164,6 +174,46 @@ class _MoreOptionsPageState extends State<MoreOptionsPage> {
     );
   }
 
+  Widget _buildSkillsList() {
+    final skills = _resumeData?['skills'];
+    if (skills == null || skills is! List || skills.isEmpty) {
+      return Text('No skills added.', style: GoogleFonts.poppins(color: Colors.grey));
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: skills.map<Widget>((skill) {
+        return Chip(
+          label: Text(skill.toString(), style: GoogleFonts.poppins(fontSize: 12)),
+          backgroundColor: const Color(0xFF5B3FD8).withAlpha(20),
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildInterestsList() {
+    final interests = _resumeData?['hobbies'];
+    if (interests == null || interests is! List || interests.isEmpty) {
+      return Text('No interests added.', style: GoogleFonts.poppins(color: Colors.grey));
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: interests.map<Widget>((interest) {
+        return Chip(
+          label: Text(interest.toString(), style: GoogleFonts.poppins(fontSize: 12)),
+          backgroundColor: Colors.orange.withAlpha(20),
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        );
+      }).toList(),
+    );
+  }
+
   List<Widget> _buildProjectsList() {
     final projects = _resumeData?['projects'] ?? _resumeData?['experience'];
     if (projects == null || projects is! List || projects.isEmpty) {
@@ -216,7 +266,7 @@ class _MoreOptionsPageState extends State<MoreOptionsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(edu['school'] ?? 'N/A', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-              Text(edu['classOf'] ?? edu['degree'] ?? 'N/A', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
+              Text(edu['classOf'] ?? edu['degree'] ?? edu['level'] ?? 'N/A', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
               Text(
                 '${edu['yearFrom'] ?? edu['startYear'] ?? ''} - ${edu['yearTo'] ?? edu['endYear'] ?? ''} | Grade: ${edu['gradeFrom'] ?? edu['additionalInfo'] ?? ''}',
                 style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade500),
@@ -228,24 +278,35 @@ class _MoreOptionsPageState extends State<MoreOptionsPage> {
     }).toList();
   }
 
-  Widget _buildHobbiesList() {
-    final hobbies = _resumeData?['hobbies'];
-    if (hobbies == null || hobbies is! List || hobbies.isEmpty) {
-      return Text('No hobbies added.', style: GoogleFonts.poppins(color: Colors.grey));
+  List<Widget> _buildTestScoresList() {
+    final scores = _resumeData?['testScores'];
+    if (scores == null || scores is! List || scores.isEmpty) {
+      return [Text('No test scores added.', style: GoogleFonts.poppins(color: Colors.grey))];
     }
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: (hobbies as List).map<Widget>((hobby) {
-        return Chip(
-          label: Text(hobby.toString(), style: GoogleFonts.poppins(fontSize: 12)),
-          backgroundColor: Colors.orange.withAlpha(20),
-          side: BorderSide.none,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        );
-      }).toList(),
-    );
+    return scores.map<Widget>((s) {
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(s['testName'] ?? 'N/A', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+        subtitle: Text('Score: ${s['score'] ?? 'N/A'}', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
+        trailing: Text(s['date'] ?? '', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade500)),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildCertificationsList() {
+    final certs = _resumeData?['certifications'];
+    if (certs == null || certs is! List || certs.isEmpty) {
+      return [Text('No certifications added.', style: GoogleFonts.poppins(color: Colors.grey))];
+    }
+
+    return certs.map<Widget>((c) {
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(c['name'] ?? 'N/A', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+        subtitle: Text('${c['skill'] ?? 'N/A'} - ${c['level'] ?? 'Basic'}', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
+      );
+    }).toList();
   }
 
   String _formatDate(String? dateStr) {
