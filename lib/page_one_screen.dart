@@ -32,12 +32,19 @@ class _PageOneScreenState extends State<PageOneScreen> {
 
       List<String> skills = [];
       if (userData['skills'] is List) {
-        skills = (userData['skills'] as List).map((e) => e.toString()).toList();
+        skills = (userData['skills'] as List).map((s) {
+          if (s is Map) return s['name']?.toString() ?? s['skill']?.toString() ?? '';
+          return s.toString();
+        }).where((s) => s.isNotEmpty).toList();
       }
 
       List<String> interests = [];
       if (userData['hobbies'] is List) {
         interests = (userData['hobbies'] as List).map((e) => e.toString()).toList();
+      }
+      
+      if (userData['careerInterests'] is List) {
+        interests.addAll((userData['careerInterests'] as List).map((e) => e.toString()));
       }
 
       if (skills.isEmpty && interests.isEmpty) {

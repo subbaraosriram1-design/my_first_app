@@ -30,13 +30,19 @@ class Project {
       };
 
   factory Project.fromJson(Map<String, dynamic> json) => Project(
-        title: json['title'] ?? '',
-        description: json['description'] ?? '',
-        linkedInterests: List<String>.from(json['linkedInterests'] ?? (json['skill'] != null ? [json['skill']] : [])),
-        linkedSkills: List<String>.from(json['linkedSkills'] ?? []),
-        startDate: json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
-        endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
-        attachments: List<String>.from(json['attachments'] ?? []),
+        title: json['title']?.toString() ?? '',
+        description: json['description']?.toString() ?? '',
+        linkedInterests: (json['linkedInterests'] is List) 
+            ? List<String>.from((json['linkedInterests'] as List).map((e) => e.toString()))
+            : (json['skill'] != null ? [json['skill'].toString()] : []),
+        linkedSkills: (json['linkedSkills'] is List)
+            ? List<String>.from((json['linkedSkills'] as List).map((e) => e.toString()))
+            : [],
+        startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
+        endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
+        attachments: (json['attachments'] is List)
+            ? List<String>.from((json['attachments'] as List).map((e) => e.toString()))
+            : [],
       );
 }
 
@@ -61,10 +67,12 @@ class Certification {
       };
 
   factory Certification.fromJson(Map<String, dynamic> json) => Certification(
-        name: json['name'] ?? '',
-        skill: json['skill'] ?? '',
-        level: json['level'] ?? 'Basic',
-        attachments: List<String>.from(json['attachments'] ?? []),
+        name: json['name']?.toString() ?? '',
+        skill: json['skill']?.toString() ?? '',
+        level: json['level']?.toString() ?? 'Basic',
+        attachments: (json['attachments'] is List)
+            ? List<String>.from((json['attachments'] as List).map((e) => e.toString()))
+            : [],
       );
 }
 
@@ -115,17 +123,19 @@ class Education {
       };
 
   factory Education.fromJson(Map<String, dynamic> json) => Education(
-        level: json['level'] ?? '',
-        school: json['school'] ?? '',
-        classOf: json['classOf'] ?? '',
-        yearFrom: json['yearFrom'] ?? '',
-        yearTo: json['yearTo'] ?? '',
-        gradeFrom: json['gradeFrom'] ?? '',
-        gradeTo: json['gradeTo'] ?? '',
-        gpa: json['gpa'] ?? '',
+        level: json['level']?.toString() ?? '',
+        school: json['school']?.toString() ?? '',
+        classOf: json['classOf']?.toString() ?? '',
+        yearFrom: json['yearFrom']?.toString() ?? '',
+        yearTo: json['yearTo']?.toString() ?? '',
+        gradeFrom: json['gradeFrom']?.toString() ?? '',
+        gradeTo: json['gradeTo']?.toString() ?? '',
+        gpa: json['gpa']?.toString() ?? '',
         isOngoing: json['isOngoing'] ?? false,
-        additionalInfo: json['additionalInfo'] ?? '',
-        attachments: List<String>.from(json['attachments'] ?? []),
+        additionalInfo: json['additionalInfo']?.toString() ?? '',
+        attachments: (json['attachments'] is List)
+            ? List<String>.from((json['attachments'] as List).map((e) => e.toString()))
+            : [],
       );
 }
 
@@ -143,8 +153,8 @@ class TestScore {
       };
 
   factory TestScore.fromJson(Map<String, dynamic> json) => TestScore(
-        testName: json['testName'] ?? '',
-        score: json['score'] ?? '',
-        date: json['date'] ?? '',
+        testName: json['testName']?.toString() ?? '',
+        score: json['score']?.toString() ?? '',
+        date: json['date']?.toString() ?? '',
       );
 }

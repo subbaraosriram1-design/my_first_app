@@ -32,7 +32,10 @@ class _PageTwoScreenState extends State<PageTwoScreen> {
 
       List<String> skills = [];
       if (userData['skills'] is List) {
-        skills = (userData['skills'] as List).map((e) => e.toString()).toList();
+        skills = (userData['skills'] as List).map((s) {
+          if (s is Map) return s['name']?.toString() ?? s['skill']?.toString() ?? '';
+          return s.toString();
+        }).where((s) => s.isNotEmpty).toList();
       }
 
       if (skills.isEmpty) {

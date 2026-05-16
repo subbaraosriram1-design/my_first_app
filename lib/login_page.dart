@@ -181,63 +181,71 @@ class _LoginPageState extends State<LoginPage> {
           if (data['satScoreRange'] != null) _satScoreRange = data['satScoreRange'];
           if (data['actScoreRange'] != null) _actScoreRange = data['actScoreRange'];
 
-          if (data['educationList'] != null) {
+          if (data['educationList'] is List) {
             _educationList.clear();
-            _educationList.addAll((data['educationList'] as List).map((e) => Education.fromJson(e as Map<String, dynamic>)));
-          }
-          if (data['projects'] != null) {
-            _projects.clear();
-            _projects.addAll((data['projects'] as List).map((p) => Project.fromJson(p as Map<String, dynamic>)));
-          }
-          if (data['unweightedGpa'] != null) _unweightedGpaController.text = data['unweightedGpa'];
-          if (data['skills'] != null) {
-            _skills.clear();
-            _skills.addAll(List<String>.from(data['skills']));
-          }
-          if (data['careerInterests'] != null) {
-            _selectedCareerInterests.clear();
-            _selectedCareerInterests.addAll(List<String>.from(data['careerInterests']));
-          }
-          if (data['hobbies'] != null) {
-            _studentInterests.clear();
-            _studentInterests.addAll(List<String>.from(data['hobbies']));
-          }
-          if (data['certifications'] != null) {
-            _certifications.clear();
-            _certifications.addAll((data['certifications'] as List).map((c) => Certification.fromJson(c as Map<String, dynamic>)));
-          }
-          if (data['goals'] != null) {
-            final goals = data['goals'] as Map<String, dynamic>;
-            if (goals['extracurricularMotivations'] != null) {
-              _extracurricularMotivations.clear();
-              _extracurricularMotivations.addAll(List<String>.from(goals['extracurricularMotivations']));
+            for (var e in (data['educationList'] as List)) {
+              if (e is Map) {
+                _educationList.add(Education.fromJson(Map<String, dynamic>.from(e)));
+              }
             }
-            _targetAchievementLevel = goals['targetAchievementLevel'];
+          }
+          if (data['projects'] is List) {
+            _projects.clear();
+            for (var p in (data['projects'] as List)) {
+              if (p is Map) {
+                _projects.add(Project.fromJson(Map<String, dynamic>.from(p)));
+              }
+            }
+          }
+          if (data['unweightedGpa'] != null) _unweightedGpaController.text = data['unweightedGpa'].toString();
+          if (data['skills'] is List) {
+            _skills.clear();
+            _skills.addAll((data['skills'] as List).map((e) => e.toString()));
+          }
+          if (data['careerInterests'] is List) {
+            _selectedCareerInterests.clear();
+            _selectedCareerInterests.addAll((data['careerInterests'] as List).map((e) => e.toString()));
+          }
+          if (data['hobbies'] is List) {
+            _studentInterests.clear();
+            _studentInterests.addAll((data['hobbies'] as List).map((e) => e.toString()));
+          }
+          if (data['certifications'] is List) {
+            _certifications.clear();
+            for (var c in (data['certifications'] as List)) {
+              if (c is Map) {
+                _certifications.add(Certification.fromJson(Map<String, dynamic>.from(c)));
+              }
+            }
+          }
+          if (data['goals'] is Map) {
+            final goals = data['goals'] as Map<String, dynamic>;
+            if (goals['extracurricularMotivations'] is List) {
+              _extracurricularMotivations.clear();
+              _extracurricularMotivations.addAll((goals['extracurricularMotivations'] as List).map((e) => e.toString()));
+            }
+            _targetAchievementLevel = goals['targetAchievementLevel']?.toString();
             _interestedInLeadership = goals['interestedInLeadership'];
             _interestedInResearch = goals['interestedInResearch'];
           }
 
-          if (data['hobbies'] != null) {
-            _studentInterests.clear();
-            _studentInterests.addAll(List<String>.from(data['hobbies']));
-          }
-          if (data['otherInterests'] != null) {
+          if (data['otherInterests'] is List) {
             _selectedOtherInterests.clear();
-            _selectedOtherInterests.addAll(List<String>.from(data['otherInterests']));
+            _selectedOtherInterests.addAll((data['otherInterests'] as List).map((e) => e.toString()));
           }
 
-          if (data['activityPreferences'] != null) {
+          if (data['activityPreferences'] is Map) {
             final activity = data['activityPreferences'] as Map<String, dynamic>;
-            _opportunitySelectiveness = activity['opportunitySelectiveness'];
+            _opportunitySelectiveness = activity['opportunitySelectiveness']?.toString();
             _interestedInPaid = activity['interestedInPaid'];
-            _ecFormatPreference = activity['ecFormatPreference'];
-            _weeklyTimeCommitment = activity['weeklyTimeCommitment'];
+            _ecFormatPreference = activity['ecFormatPreference']?.toString();
+            _weeklyTimeCommitment = activity['weeklyTimeCommitment']?.toString();
           }
 
-          if (data['finalDetails'] != null) {
+          if (data['finalDetails'] is Map) {
             final finalDetails = data['finalDetails'] as Map<String, dynamic>;
             _interestedInTravel = finalDetails['interestedInTravel'];
-            _howDidYouHear = finalDetails['howDidYouHear'];
+            _howDidYouHear = finalDetails['howDidYouHear']?.toString();
             _usedOtherApps = finalDetails['usedOtherApps'];
           }
         });
