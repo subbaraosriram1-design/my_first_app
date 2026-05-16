@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'login_page.dart';
 import 'career_profile_screen.dart';
 import 'ai_insights_screen.dart';
+import 'roadmap_view_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +55,16 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Check if index was passed as an argument
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is int) {
+      _selectedIndex = args;
+    }
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -65,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
     // Screens for the navigation
     final List<Widget> screens = [
       const CareerProfileScreen(), // The new profile/home screen
-      const Center(child: Text('Feed Screen')),
+      const RoadmapViewScreen(),
       const Center(child: Text('Connections Screen')),
       const Center(child: Text('Chat Screen')),
       const AiInsightsScreen(),
@@ -97,9 +108,9 @@ class _MyHomePageState extends State<MyHomePage> {
               label: 'Profile',
             ),
             NavigationDestination(
-              icon: Icon(Icons.rss_feed, color: _selectedIndex == 1 ? const Color(0xFF5B3FD8) : Colors.grey),
-              selectedIcon: const Icon(Icons.rss_feed, color: Color(0xFF5B3FD8)),
-              label: 'Feed',
+              icon: Icon(Icons.map_outlined, color: _selectedIndex == 1 ? const Color(0xFF5B3FD8) : Colors.grey),
+              selectedIcon: const Icon(Icons.map, color: Color(0xFF5B3FD8)),
+              label: 'Roadmap',
             ),
             NavigationDestination(
               icon: Icon(Icons.people_outline, color: _selectedIndex == 2 ? const Color(0xFF5B3FD8) : Colors.grey),

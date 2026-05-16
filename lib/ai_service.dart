@@ -9,6 +9,8 @@ abstract class AiService {
   Future<Map<String, dynamic>> getNextSteps(List<String> skills, List<String> interests);
   Future<List<Map<String, String>>> getCareerTrajectory(List<String> skills);
   Future<String> generateSummary(Map<String, dynamic> userData);
+  Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer);
+  Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext);
 }
 
 /// Implementation using Groq
@@ -38,7 +40,13 @@ class GroqAiService implements AiService {
         body: jsonEncode({
           "model": ApiConfig.model,
           "messages": [
-            {"role": "system", "content": "You are a professional career guidance assistant. Always respond in JSON format when requested."},
+            {
+              "role": "system", 
+              "content": "You are a professional, extremely polite, and encouraging career guidance assistant. "
+                         "Always use a positive tone. Your goal is to inspire and motivate the user. "
+                         "When you see their accomplishments, praise them warmly. "
+                         "Never be demotivating. Always respond in JSON format when requested."
+            },
             {"role": "user", "content": prompt}
           ],
           "temperature": 0.7,
@@ -202,6 +210,111 @@ class GroqAiService implements AiService {
     }
   }
 
+  @override
+  Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer) async {
+    try {
+      final String weeklyCommitment = userData['activityPreferences']?['weeklyTimeCommitment'] ?? '1hr default';
+      final String targetAchievement = userData['goals']?['targetAchievementLevel'] ?? 'Job';
+      
+      // Determine number of skills based on target achievement
+      int skillCount = 15;
+      if (targetAchievement.toLowerCase().contains('job') || targetAchievement.toLowerCase().contains('elite')) {
+        skillCount = 25;
+      } else if (targetAchievement.toLowerCase().contains('abroad') || targetAchievement.toLowerCase().contains('international')) {
+        skillCount = 20;
+      }
+
+      final prompt = """
+        User Profile: ${jsonEncode(userData)}
+        Target Career: $targetCareer
+        Weekly Time Commitment: $weeklyCommitment
+        Target Achievement Level: $targetAchievement
+
+        Act as an expert career advisor. Analyze the user's projects, skills, and certifications.
+        
+        CRITICAL GUIDELINES:
+        1. Be EXTREMELY polite, positive, and encouraging.
+        2. Specifically PRAISE the user for their existing certifications and projects.
+        3. For the skills list, provide EXACTLY $skillCount skills relevant to $targetCareer.
+        4. RELEVANCE CHECK: Only suggest skills that are actually needed for $targetCareer. If a user has a certification in an unrelated area (e.g., C for Web Development), do not force its inclusion in the roadmap unless it's genuinely useful as a foundation.
+        5. EXCLUSION RULE: If the user ALREADY has an "Advanced" certification or significant project experience in a suggested skill, DO NOT show an "Add to Roadmap" button for it in the final output (mark "already_mastered": true).
+        6. For EACH skill, provide a "justification" explaining why it's crucial for this specific career path.
+        7. Return ONLY a valid JSON object.
+        
+        JSON Structure:
+        {
+          "achievements": "Summary...",
+          "gap_analysis": "Next steps...",
+          "steps": [{"title": "Step title", "duration": "Duration"}],
+          "timeline": "Total weeks",
+          "industry_news": [
+            {
+              "title": "Brand New Tool/Tech Name",
+              "impact": "Explain exactly what is new and why it is a game-changer...",
+              "date": "Trending Now"
+            }
+          ],
+          "required_skills": [
+            {
+              "name": "Skill Name",
+              "justification": "Why this skill is important...",
+              "already_mastered": false,
+              "user_status": "Status update..."
+            }
+          ]
+        }
+
+        AI INSTRUCTIONS FOR NEWS:
+        Focus exclusively on 'The Cutting Edge':
+        - What brand new libraries, frameworks, or tools were released in the last few months?
+        - What emerging technologies (like new AI models or hardware) are currently disrupting this career?
+        - Avoid general career advice or generic industry updates.
+        - Give the user a 'First Look' at the absolute latest innovations they need to know about.
+      """;
+
+      final result = await _callAi(prompt);
+      if (result != null) {
+        return json.decode(_stripMarkdown(result));
+      }
+    } catch (e) {
+      print("Error in getDetailedCareerPlan: $e");
+    }
+    return {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext) async {
+    try {
+      final prompt = """
+        Skill: $skill
+        Career Context: $careerContext
+
+        Provide a comprehensive list of learning resources for this skill at three levels: Basic, Intermediate, and Advanced.
+        Provide at least 5-10 high-quality links for each level where possible.
+        
+        Return ONLY a raw JSON object with:
+        "description": Brief overview of the skill.
+        "levels": {
+          "Basic": {
+            "trainings": [{"title": "Course Name", "link": "url"}],
+            "youtube": [{"title": "Video Name", "link": "url"}],
+            "docs": [{"title": "Documentation Name", "link": "url"}]
+          },
+          "Intermediate": { ... },
+          "Advanced": { ... }
+        }
+      """;
+
+      final result = await _callAi(prompt);
+      if (result != null) {
+        return json.decode(_stripMarkdown(result));
+      }
+    } catch (e) {
+      print("Error in getSkillResources: $e");
+    }
+    return {};
+  }
+
   String _stripMarkdown(String text) {
     return text.replaceAll('```json', '').replaceAll('```', '').trim();
   }
@@ -232,5 +345,56 @@ class MockAiService implements AiService {
   Future<String> generateSummary(Map<String, dynamic> userData) async {
     await Future.delayed(const Duration(seconds: 1));
     return 'Ambitious student with a strong focus on technical growth and community contribution.';
+  }
+
+  @override
+  Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer) async {
+    await Future.delayed(const Duration(seconds: 1));
+    return {
+      "achievements": "You have a fantastic foundation! It's wonderful that you've already explored several projects. Your dedication is truly inspiring!",
+      "gap_analysis": "To reach your goal of being a $targetCareer, we have some exciting new skills to dive into together!",
+      "industry_news": [
+        {
+          "title": "Rise of Generative AI",
+          "impact": "New opportunities for developers to integrate AI into existing workflows.",
+          "date": "Trending"
+        },
+        {
+          "title": "Remote Work Standards",
+          "impact": "Global companies are formalizing long-term hybrid structures.",
+          "date": "Recent"
+        }
+      ],
+      "steps": [
+        {"title": "Complete specialized certification", "duration": "2 weeks"},
+        {"title": "Build a portfolio project", "duration": "3 weeks"}
+      ],
+      "timeline": "5 weeks",
+      "required_skills": [
+        {
+          "name": "Flutter",
+          "justification": "Leading framework for cross-platform apps.",
+          "already_mastered": false,
+          "user_status": ""
+        },
+        {
+          "name": "Problem Solving",
+          "justification": "Essential for any high-level career.",
+          "already_mastered": true,
+          "user_status": "Your work on previous projects shows you're a natural!"
+        }
+      ]
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext) async {
+    await Future.delayed(const Duration(seconds: 1));
+    return {
+      "description": "Mastering $skill is a brilliant move for your journey towards becoming a $careerContext!",
+      "trainings": [{"title": "$skill Mastery Course", "link": "https://udemy.com"}],
+      "youtube": [{"title": "$skill Explained simply", "link": "https://youtube.com"}],
+      "docs": [{"title": "Official $skill Documentation", "link": "https://docs.com"}]
+    };
   }
 }

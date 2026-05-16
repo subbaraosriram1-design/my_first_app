@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'page_one_screen.dart';
+import 'career_selection_screen.dart';
 import 'page_two_screen.dart';
 
 class AiInsightsScreen extends StatelessWidget {
@@ -43,10 +43,14 @@ class AiInsightsScreen extends StatelessWidget {
               title: 'What to do next',
               description: 'Personalized course and project recommendations based on your skills.',
               icon: Icons.auto_awesome,
-              color: const Color(0xFF5B3FD8),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E293B), Color(0xFF334155)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const PageOneScreen()),
+                MaterialPageRoute(builder: (context) => const CareerSelectionScreen()),
               ),
             ),
             const SizedBox(height: 20),
@@ -55,7 +59,11 @@ class AiInsightsScreen extends StatelessWidget {
               title: 'Career Trajectory',
               description: 'Visualize your potential career path and growth stages.',
               icon: Icons.trending_up,
-              color: const Color(0xFFF97316),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const PageTwoScreen()),
@@ -72,7 +80,7 @@ class AiInsightsScreen extends StatelessWidget {
     required String title,
     required String description,
     required IconData icon,
-    required Color color,
+    required Gradient gradient,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -80,12 +88,11 @@ class AiInsightsScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200),
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: color.withAlpha(20),
+              color: Colors.black.withAlpha(40),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -96,10 +103,10 @@ class AiInsightsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withAlpha(20),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withAlpha(30),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: Colors.white, size: 28),
             ),
             const SizedBox(width: 20),
             Expanded(
@@ -110,8 +117,8 @@ class AiInsightsScreen extends StatelessWidget {
                     title,
                     style: GoogleFonts.poppins(
                       fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -119,13 +126,13 @@ class AiInsightsScreen extends StatelessWidget {
                     description,
                     style: GoogleFonts.poppins(
                       fontSize: 13,
-                      color: Colors.grey.shade600,
+                      color: Colors.white.withAlpha(200),
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, color: Colors.grey.shade400, size: 16),
+            Icon(Icons.arrow_forward_ios, color: Colors.white.withAlpha(150), size: 16),
           ],
         ),
       ),
