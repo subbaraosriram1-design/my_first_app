@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'api_config.dart';
 
 class FirebaseService {
   static final FirebaseService instance = FirebaseService._init();
@@ -99,12 +100,12 @@ class FirebaseService {
   // Fetch API Keys for AI Services
   Future<String?> getGrokApiKey() async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('config').doc('api_keys').get();
+      DocumentSnapshot doc = await _firestore.collection(ApiConfig.configCollection).doc(ApiConfig.apiKeysDocument).get();
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
-        return data['grok_api_key'] as String?;
+        return data[ApiConfig.grokKeyField] as String?;
       }
-      debugPrint('Firestore: config/api_keys document does not exist');
+      debugPrint('Firestore: ${ApiConfig.configCollection}/${ApiConfig.apiKeysDocument} document does not exist');
       return null;
     } catch (e) {
       debugPrint('Firestore GetApiKey Error: $e');

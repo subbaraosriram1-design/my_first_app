@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'firebase_service.dart';
 import 'models.dart';
 
@@ -397,6 +398,7 @@ class _LoginPageState extends State<LoginPage> {
         if (user != null) {
           // Save Resume Data
           final resumeData = {
+            'profileImage': _profileImageBase64,
             'fullName': _nameController.text,
             'email': email,
             'tagline': _taglineController.text,
@@ -757,11 +759,26 @@ class _LoginPageState extends State<LoginPage> {
             Center(
               child: GestureDetector(
                 onTap: () async {
-                  FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
+                  FilePickerResult? result = await FilePicker.platform.pickFiles(
+                    type: FileType.image,
+                    withData: true, // Crucial for web and some mobile platforms to get bytes
+                  );
                   if (result != null) {
-                    setState(() {
-                      _profileImageBase64 = base64Encode(result.files.single.bytes!);
-                    });
+                    final file = result.files.single;
+                    String? base64String;
+                    
+                    if (file.bytes != null) {
+                      base64String = base64Encode(file.bytes!);
+                    } else if (file.path != null) {
+                      final bytes = await File(file.path!).readAsBytes();
+                      base64String = base64Encode(bytes);
+                    }
+
+                    if (base64String != null) {
+                      setState(() {
+                        _profileImageBase64 = base64String;
+                      });
+                    }
                   }
                 },
                 child: CircleAvatar(

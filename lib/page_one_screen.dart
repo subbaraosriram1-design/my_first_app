@@ -11,7 +11,7 @@ class PageOneScreen extends StatefulWidget {
 }
 
 class _PageOneScreenState extends State<PageOneScreen> {
-  final AiService _aiService = GrokAiService();
+  final AiService _aiService = GroqAiService();
   Map<String, dynamic>? _recommendations;
   bool _isLoading = true;
   String? _error;

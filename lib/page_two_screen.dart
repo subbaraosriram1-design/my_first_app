@@ -11,7 +11,7 @@ class PageTwoScreen extends StatefulWidget {
 }
 
 class _PageTwoScreenState extends State<PageTwoScreen> {
-  final AiService _aiService = GrokAiService();
+  final AiService _aiService = GroqAiService();
   List<Map<String, String>>? _trajectory;
   bool _isLoading = true;
   String? _error;

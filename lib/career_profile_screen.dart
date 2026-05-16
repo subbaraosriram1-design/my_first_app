@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'firebase_service.dart';
 import 'placeholder_screens.dart';
 import 'login_page.dart';
+import 'ai_service.dart';
 
 class CareerProfileScreen extends StatefulWidget {
   const CareerProfileScreen({super.key});
@@ -517,11 +518,36 @@ class _SummaryViewPageState extends State<SummaryViewPage> {
   late TextEditingController _controller;
   bool _isEditing = false;
   bool _isSaving = false;
+  bool _isGenerating = false;
+  final AiService _aiService = GroqAiService();
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.summary);
+  }
+
+  Future<void> _generateAiSummary() async {
+    final userId = FirebaseService.instance.currentUserId;
+    if (userId != null) {
+      setState(() => _isGenerating = true);
+      try {
+        final userData = await FirebaseService.instance.getResume(userId);
+        if (userData != null) {
+          final summary = await _aiService.generateSummary(userData);
+          setState(() {
+            _controller.text = summary;
+            _isEditing = true;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('AI Generation failed: $e')));
+        }
+      } finally {
+        if (mounted) setState(() => _isGenerating = false);
+      }
+    }
   }
 
   Future<void> _save() async {
@@ -548,6 +574,14 @@ class _SummaryViewPageState extends State<SummaryViewPage> {
       appBar: AppBar(
         title: Text('Professional Summary', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 18)),
         actions: [
+          if (!_isEditing)
+            _isGenerating
+                ? const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 16.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+                : IconButton(
+                    icon: const Icon(Icons.auto_awesome, color: Color(0xFF5B3FD8)),
+                    tooltip: 'Generate with AI',
+                    onPressed: _generateAiSummary,
+                  ),
           _isSaving 
             ? const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 16.0), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
             : IconButton(
