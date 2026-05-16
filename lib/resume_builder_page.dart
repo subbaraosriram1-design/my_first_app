@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
@@ -18,12 +17,10 @@ class ResumeBuilderPage extends StatefulWidget {
 class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
   int _currentStep = 0;
   final int _totalSteps = 6;
-  List<String> _pickedFiles = [];
   final List<Project> _projects = [];
   final List<Education> _educationList = [];
   final List<String> _skills = [];
   final List<String> _studentInterests = [];
-  final List<String> _careerInterests = [];
   final List<Certification> _certifications = [];
   final List<TestScore> _testScores = [];
   String? _profileImageBase64;
@@ -83,10 +80,6 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
             _studentInterests.clear();
             _studentInterests.addAll((data['hobbies'] as List).map((e) => e.toString()));
           }
-          if (data['careerInterests'] != null) {
-            _careerInterests.clear();
-            _careerInterests.addAll(List<String>.from(data['careerInterests']));
-          }
           if (data['certifications'] != null) {
             _certifications.clear();
             _certifications.addAll((data['certifications'] as List).map((c) => Certification.fromJson(c as Map<String, dynamic>)));
@@ -124,15 +117,6 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
     }
   }
 
-  Future<void> _pickFiles() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(allowMultiple: true);
-    if (result != null) {
-      setState(() {
-        _pickedFiles = result.paths.whereType<String>().toList();
-      });
-    }
-  }
-
   Future<void> _pickProfileImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result != null) {
@@ -140,10 +124,6 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
         setState(() {
           _profileImageBase64 = base64Encode(result.files.single.bytes!);
         });
-      } else if (result.files.single.path != null) {
-         // handle path for mobile
-         final bytes = await (FilePicker.platform.pickFiles(type: FileType.image)).then((_) => null); // dummy to avoid error
-         // In a real app we'd read from path, but since bytes might be null on some platforms:
       }
     }
   }
@@ -224,24 +204,6 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
         _startYearController.clear();
         _endYearController.clear();
         _additionalInfoController.clear();
-      });
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context, bool isStart, int index) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1950),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isStart) {
-          _projects[index].startDate = picked;
-        } else {
-          _projects[index].endDate = picked;
-        }
       });
     }
   }
@@ -335,7 +297,7 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
   Widget _buildBottomNavigation() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))]),
       child: Row(
         children: [
           if (_currentStep > 0) ...[
@@ -437,13 +399,13 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
         const SizedBox(height: 8),
         Row(children: [Expanded(child: _buildTextField(_skillController, 'Skill name', Icons.bolt_outlined)), const SizedBox(width: 8), _buildSmallAddButton(_addSkill)]),
         const SizedBox(height: 12),
-        Wrap(spacing: 8, children: _skills.map((skill) => Chip(label: Text(skill), onDeleted: () => setState(() => _skills.remove(skill)), backgroundColor: const Color(0xFF5B3FD8).withOpacity(0.1), side: BorderSide.none)).toList()),
+        Wrap(spacing: 8, children: _skills.map((skill) => Chip(label: Text(skill), onDeleted: () => setState(() => _skills.remove(skill)), backgroundColor: const Color(0xFF5B3FD8).withValues(alpha: 0.1), side: BorderSide.none)).toList()),
         const SizedBox(height: 32),
         Text('Student Interests', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 8),
         Row(children: [Expanded(child: _buildTextField(_studentInterestController, 'Interest name', Icons.star_border_outlined)), const SizedBox(width: 8), _buildSmallAddButton(_addStudentInterest)]),
         const SizedBox(height: 12),
-        Wrap(spacing: 8, children: _studentInterests.map((interest) => Chip(label: Text(interest), onDeleted: () => setState(() => _studentInterests.remove(interest)), backgroundColor: Colors.orange.withOpacity(0.1), side: BorderSide.none)).toList()),
+        Wrap(spacing: 8, children: _studentInterests.map((interest) => Chip(label: Text(interest), onDeleted: () => setState(() => _studentInterests.remove(interest)), backgroundColor: Colors.orange.withValues(alpha: 0.1), side: BorderSide.none)).toList()),
       ],
     );
   }
@@ -470,7 +432,7 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
         _buildTextField(_certNameController, 'Certification Name', Icons.verified_outlined),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          value: _selectedSkillForCert,
+          initialValue: _selectedSkillForCert,
           hint: Text('Link to skill', style: GoogleFonts.poppins()),
           decoration: _getInputDecoration('', Icons.link),
           items: _skills.map((skill) => DropdownMenuItem(value: skill, child: Text(skill))).toList(),
@@ -478,7 +440,7 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          value: _selectedCertLevel,
+          initialValue: _selectedCertLevel,
           decoration: _getInputDecoration('Level', Icons.layers_outlined),
           items: _certLevels.map((level) => DropdownMenuItem(value: level, child: Text(level))).toList(),
           onChanged: (val) => setState(() => _selectedCertLevel = val ?? 'Basic'),

@@ -271,15 +271,14 @@ class _LoginPageState extends State<LoginPage> {
               final email = emailController.text.trim();
               if (email.isNotEmpty) {
                 final userExists = await FirebaseService.instance.getResumeByEmail(email) != null;
-                if (mounted) {
-                  Navigator.pop(context);
-                  if (userExists) {
-                    _showNewPasswordDialog(email);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User not found.')),
-                    );
-                  }
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                if (userExists) {
+                  _showNewPasswordDialog(email);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('User not found.')),
+                  );
                 }
               }
             },
@@ -1654,7 +1653,7 @@ class _LoginPageState extends State<LoginPage> {
         Column(
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedSkillForCert,
+              initialValue: _selectedSkillForCert,
               hint: Text('Link to Career Interest', style: GoogleFonts.poppins()),
               decoration: _buildInputDecoration('', Icons.stars_outlined),
               items: [..._selectedCareerInterests, 'Others'].map((interest) => DropdownMenuItem(value: interest, child: Text(interest))).toList(),
@@ -1662,7 +1661,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _selectedCertLevel,
+              initialValue: _selectedCertLevel,
               hint: Text('Level', style: GoogleFonts.poppins()),
               decoration: _buildInputDecoration('', Icons.layers_outlined),
               items: _certLevels.map((level) => DropdownMenuItem(value: level, child: Text(level))).toList(),
