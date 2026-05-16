@@ -96,7 +96,7 @@ class FirebaseService {
     }
   }
 
-  // Fetch API Keys
+  // Fetch API Keys for AI Services
   Future<String?> getGrokApiKey() async {
     try {
       DocumentSnapshot doc = await _firestore.collection('config').doc('api_keys').get();
@@ -104,7 +104,7 @@ class FirebaseService {
         final data = doc.data() as Map<String, dynamic>;
         return data['grok_api_key'] as String?;
       }
-      debugPrint('Firestore: api_keys document does not exist');
+      debugPrint('Firestore: config/api_keys document does not exist');
       return null;
     } catch (e) {
       debugPrint('Firestore GetApiKey Error: $e');

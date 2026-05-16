@@ -15,9 +15,11 @@ class GrokAiService implements AiService {
   final String _baseUrl = "https://api.x.ai/v1/chat/completions";
 
   Future<String?> _callGrok(String prompt) async {
+    // Fetch the API Key from Firebase instead of having it hardcoded
     final String? apiKey = await FirebaseService.instance.getGrokApiKey();
+    
     if (apiKey == null || apiKey.isEmpty) {
-      print("xAI API Key not found in Firebase Firestore.");
+      print("Error: xAI API Key not found in Firebase Firestore.");
       return null;
     }
 
@@ -46,6 +48,7 @@ class GrokAiService implements AiService {
         throw Exception(errorData['error']?['message'] ?? "Grok API Error \${response.statusCode}");
       }
     } catch (e) {
+      print("Grok API Call Exception: \$e");
       rethrow;
     }
   }
