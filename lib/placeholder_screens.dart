@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'firebase_service.dart';
+import 'ai_insights_screen.dart';
 
 class PlaceholderPage extends StatelessWidget {
   final String title;
@@ -463,7 +464,7 @@ class _MenuPageState extends State<MenuPage> {
                 children: [
                   _buildMenuItem(Icons.settings_outlined, 'Account settings'),
                   _buildMenuItem(Icons.people_outline, 'Manage roles'),
-                  _buildMenuItem(Icons.smart_toy_outlined, 'Help (spikeviewbot)'),
+                  _buildMenuItem(Icons.smart_toy_outlined, 'AI Insights'),
                   _buildMenuItem(Icons.mail_outline, 'Invite friends & earn'),
                   _buildMenuItem(Icons.verified_user_outlined, 'Privacy policy'),
                   _buildMenuItem(Icons.info_outline, 'About spikeview'),
@@ -507,6 +508,11 @@ class _MenuPageState extends State<MenuPage> {
             if (mounted) {
               Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
             }
+          } else if (title == 'AI Insights') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AiInsightsScreen()),
+            );
           } else {
             // Placeholder for other menu items
           }

@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'login_page.dart';
 import 'career_profile_screen.dart';
+import 'ai_insights_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,7 +68,7 @@ class _MyHomePageState extends State<MyHomePage> {
       const Center(child: Text('Feed Screen')),
       const Center(child: Text('Connections Screen')),
       const Center(child: Text('Chat Screen')),
-      const Center(child: Text('Groups Screen')),
+      const AiInsightsScreen(),
     ];
 
     return Scaffold(
@@ -111,9 +112,9 @@ class _MyHomePageState extends State<MyHomePage> {
               label: 'Chat',
             ),
             NavigationDestination(
-              icon: Icon(Icons.groups_outlined, color: _selectedIndex == 4 ? const Color(0xFF5B3FD8) : Colors.grey),
-              selectedIcon: const Icon(Icons.groups, color: Color(0xFF5B3FD8)),
-              label: 'Groups',
+              icon: Icon(Icons.lightbulb_outline, color: _selectedIndex == 4 ? const Color(0xFF5B3FD8) : Colors.grey),
+              selectedIcon: const Icon(Icons.lightbulb, color: Color(0xFF5B3FD8)),
+              label: 'AI Insights',
             ),
           ],
         ),
