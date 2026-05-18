@@ -64,6 +64,7 @@ class _LoginPageState extends State<LoginPage> {
   // Step 6: Student Interests
   final _unweightedGpaController = TextEditingController();
   final List<String> _selectedCareerInterests = [];
+  String? _activeCareerInterest;
   final _interestSearchController = TextEditingController();
 
   // Step 7: Skills & Certs
@@ -206,6 +207,9 @@ class _LoginPageState extends State<LoginPage> {
             _selectedCareerInterests.clear();
             _selectedCareerInterests.addAll((data['careerInterests'] as List).map((e) => e.toString()));
           }
+          if (data['activeCareerInterest'] != null) {
+            _activeCareerInterest = data['activeCareerInterest'].toString();
+          }
           if (data['hobbies'] is List) {
             _studentInterests.clear();
             _studentInterests.addAll((data['hobbies'] as List).map((e) => e.toString()));
@@ -279,7 +283,7 @@ class _LoginPageState extends State<LoginPage> {
               final email = emailController.text.trim();
               if (email.isNotEmpty) {
                 final userExists = await FirebaseService.instance.getResumeByEmail(email) != null;
-                if (!context.mounted) return;
+                if (!mounted) return;
                 Navigator.pop(context);
                 if (userExists) {
                   _showNewPasswordDialog(email);
@@ -424,6 +428,7 @@ class _LoginPageState extends State<LoginPage> {
             // Student Interests
             'unweightedGpa': _unweightedGpaController.text,
             'careerInterests': _selectedCareerInterests,
+            'activeCareerInterest': _activeCareerInterest,
             'otherInterests': _selectedOtherInterests,
             // Skills & Hobbies
             'skills': _skills,
@@ -1190,6 +1195,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildInterestSelection() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
           controller: _interestSearchController,
@@ -1201,7 +1207,12 @@ class _LoginPageState extends State<LoginPage> {
           spacing: 8,
           children: _selectedCareerInterests.map((interest) => Chip(
             label: Text(interest, style: const TextStyle(fontSize: 12)),
-            onDeleted: () => setState(() => _selectedCareerInterests.remove(interest)),
+            onDeleted: () => setState(() {
+              _selectedCareerInterests.remove(interest);
+              if (_activeCareerInterest == interest) {
+                _activeCareerInterest = null;
+              }
+            }),
             backgroundColor: const Color(0xFF5B3FD8).withAlpha(26),
             side: BorderSide.none,
           )).toList(),
@@ -1222,6 +1233,10 @@ class _LoginPageState extends State<LoginPage> {
                   if (_selectedCareerInterests.length < 5) {
                     setState(() {
                       _selectedCareerInterests.add(opt);
+                      // If it's the first one, make it primary by default
+                      if (_selectedCareerInterests.length == 1) {
+                        _activeCareerInterest = opt;
+                      }
                       _interestSearchController.clear();
                     });
                   } else {
@@ -1232,6 +1247,41 @@ class _LoginPageState extends State<LoginPage> {
             }).toList(),
           ),
         ),
+        if (_selectedCareerInterests.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _buildTextFieldLabel('PRIMARY CAREER INTEREST *'),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: _selectedCareerInterests.contains(_activeCareerInterest) ? _activeCareerInterest : null,
+                hint: Text('Select primary interest', style: GoogleFonts.poppins(fontSize: 14)),
+                items: _selectedCareerInterests.map((interest) {
+                  return DropdownMenuItem<String>(
+                    value: interest,
+                    child: Text(interest, style: GoogleFonts.poppins(fontSize: 14)),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    _activeCareerInterest = val;
+                  });
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'This will be the default focus for your Roadmap.',
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade500),
+          ),
+        ],
       ],
     );
   }
@@ -1815,6 +1865,7 @@ class _LoginPageState extends State<LoginPage> {
           // Student Interests
           'unweightedGpa': _unweightedGpaController.text,
           'careerInterests': _selectedCareerInterests,
+          'activeCareerInterest': _activeCareerInterest,
           'otherInterests': _selectedOtherInterests,
           // Skills & Hobbies
           'skills': _skills,

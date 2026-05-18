@@ -270,6 +270,8 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildQuickCompleteButton(),
+        const SizedBox(height: 24),
         _buildResourceSection('Personalized Trainings', levelData['trainings'], Icons.school_outlined, const Color(0xFF5B3FD8)),
         const SizedBox(height: 24),
         _buildResourceSection('Motivating Tutorials', levelData['youtube'], Icons.play_circle_outline, Colors.red),
@@ -277,6 +279,94 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
         _buildResourceSection('In-depth Knowledge', levelData['docs'], Icons.description_outlined, const Color(0xFF10B981)),
       ],
     );
+  }
+
+  Widget _buildQuickCompleteButton() {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: FirebaseService.instance.getResume(FirebaseService.instance.currentUserId!),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+        final List<dynamic> profileSkills = snapshot.data!['skills'] ?? [];
+        final bool isAlreadyInProfile = profileSkills.any((s) => s.toString().toLowerCase() == widget.skill.toLowerCase());
+        
+        if (!isAlreadyInProfile) return const SizedBox.shrink();
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF8B5CF6).withAlpha(10),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF8B5CF6).withAlpha(30)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.sync, color: Color(0xFF8B5CF6), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Skill matched in Profile!',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: const Color(0xFF8B5CF6)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Since you already have this skill in your profile, you can mark this entire level as completed instantly.',
+                style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _quickCompleteLevel(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B5CF6),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Quick Complete Level'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _quickCompleteLevel() async {
+    final levelData = _resources?['levels']?[_selectedLevel];
+    if (levelData == null) return;
+
+    List resourcesInLevel = [];
+    resourcesInLevel.addAll(levelData['trainings'] ?? []);
+    resourcesInLevel.addAll(levelData['youtube'] ?? []);
+    resourcesInLevel.addAll(levelData['docs'] ?? []);
+
+    final userId = FirebaseService.instance.currentUserId;
+    if (userId == null) return;
+
+    final skillProgress = Map<String, dynamic>.from(_userProgress[widget.skill] ?? {});
+    List completed = List.from(skillProgress['completedResources'] ?? []);
+    
+    for (var res in resourcesInLevel) {
+      final title = res['title'] ?? 'Resource';
+      final link = res['link'] ?? '';
+      if (!completed.any((r) => r['link'] == link)) {
+        completed.add({'title': title, 'link': link, 'date': DateTime.now().toIso8601String()});
+      }
+    }
+    
+    skillProgress['completedResources'] = completed;
+    _userProgress[widget.skill] = skillProgress;
+    
+    await FirebaseService.instance.saveResume(userId, {'resourceProgress': _userProgress});
+    await _checkLevelCompletion();
+    setState(() {});
   }
 
   Widget _buildResourceSection(String title, List<dynamic>? items, IconData icon, Color color) {
@@ -293,7 +383,7 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        ...items.map((item) => _buildResourceCard(item['title'], item['link'], color)).toList(),
+        ...items.map((item) => _buildResourceCard(item['title'], item['link'], color)),
       ],
     );
   }

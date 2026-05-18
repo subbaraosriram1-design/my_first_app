@@ -28,7 +28,8 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
   List<dynamic> _projects = [];
   List<dynamic> _testScores = [];
   List<String> _careerInterests = [];
-  Map<String, double> _interestPoints = {};
+  String? _activeCareerInterest;
+  double _activeCareerProgress = 0.0;
   bool _isLoading = true;
 
   @override
@@ -86,42 +87,49 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
           }
         }
 
-        // Calculate Career Interest Points
+        // Calculate Career Progress
         List<String> userInterests = [];
         if (data['careerInterests'] is List) {
           userInterests = (data['careerInterests'] as List).map((e) => e.toString()).toList();
         }
 
-        Map<String, double> pointsMap = {};
-        for (var interest in userInterests) {
-          double points = 0;
-          for (var cert in certsRaw) {
-            if (cert['skill'] == interest || cert['skill'] == 'Others') {
-              String level = cert['level'] ?? 'Basic';
-              if (level == 'Basic') {
-            points += 5;
+        String? activeInterest = data['activeCareerInterest'];
+        double activeProgress = 0.0;
+        
+        if (activeInterest != null) {
+          final progressData = data['resourceProgress'] ?? {};
+          final careerRoadmaps = data['careerRoadmaps'] ?? {};
+          
+          final List<String> roadmapSkills = List<String>.from(careerRoadmaps[activeInterest] ?? []);
+          
+          // Determine the total target skills based on achievement level (sync with roadmap_view_screen logic)
+          int totalTargetSkills = 15;
+          final targetAchievement = (data['goals']?['targetAchievementLevel'] ?? 'Job').toString().toLowerCase();
+          if (targetAchievement.contains('job') || targetAchievement.contains('elite')) {
+            totalTargetSkills = 25;
+          } else if (targetAchievement.contains('abroad') || targetAchievement.contains('international')) {
+            totalTargetSkills = 20;
           }
-              else if (level == 'Intermediate') {
-                points += 10;
-              } else if (level == 'Advanced') {
-                points += 15;
-              }
-            }
-          }
-          List<dynamic> projectsRaw = data['projects'] ?? data['experience'] ?? [];
-          for (var proj in projectsRaw) {
-            List<String> linkedInterests = [];
-            if (proj['linkedInterests'] is List) {
-              linkedInterests = List<String>.from(proj['linkedInterests']);
-            } else if (proj['skill'] != null) {
-              linkedInterests = [proj['skill'].toString()];
-            }
 
-            if (linkedInterests.contains(interest) || (proj['description'] != null && proj['description'].toString().contains(interest))) {
-              points += 20;
+          if (roadmapSkills.isNotEmpty || totalTargetSkills > 0) {
+            // totalRequired = (total suggested skills) * 3 levels
+            int totalRequired = totalTargetSkills * 3;
+            int completedLevels = 0;
+
+            for (var skill in roadmapSkills) {
+              final skillProgress = progressData[skill] ?? {};
+              final completedResources = List.from(skillProgress['completedResources'] ?? []);
+              final totalResources = skillProgress['totalResources'] as int? ?? 1;
+
+              double skillPercent = (completedResources.length / totalResources).clamp(0.0, 1.0);
+              // Simple level-based completion estimation
+              if (skillPercent >= 0.95) completedLevels += 3;
+              else if (skillPercent >= 0.6) completedLevels += 2;
+              else if (skillPercent >= 0.2) completedLevels += 1;
             }
+            
+            activeProgress = (completedLevels / totalRequired).clamp(0.0, 1.0);
           }
-          if (points > 0) pointsMap[interest] = points;
         }
 
         setState(() {
@@ -132,7 +140,8 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
           _projects = data['projects'] ?? data['experience'] ?? [];
           _testScores = data['testScores'] ?? [];
           _careerInterests = userInterests;
-          _interestPoints = pointsMap;
+          _activeCareerInterest = activeInterest;
+          _activeCareerProgress = activeProgress;
           _profileImageBase64 = data['profileImage'];
           _radarLabels = labels;
           _labelProgress = progress;
@@ -231,71 +240,128 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
           const SizedBox(width: 16),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 24),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: _buildProfileHeader()),
-            _buildPieChartSection(),
-            const SizedBox(height: 48),
-            _buildVideoCard(),
-            const SizedBox(height: 24),
-            _buildExpandableSections(),
-            const SizedBox(height: 48),
-            _buildRadarChartSection(),
-            const SizedBox(height: 48),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _loadProfileData,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 24),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: _buildProfileHeader()),
+              _buildProgressSection(),
+              const SizedBox(height: 48),
+              _buildVideoCard(),
+              const SizedBox(height: 24),
+              _buildExpandableSections(),
+              const SizedBox(height: 48),
+              _buildRadarChartSection(),
+              const SizedBox(height: 48),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildPieChartSection() {
-    if (_interestPoints.isEmpty) return const SizedBox.shrink();
+  Widget _buildProgressSection() {
+    if (_activeCareerInterest == null) return const SizedBox.shrink();
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Certification Progress', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A))),
-          const SizedBox(height: 8),
-          Text('Points earned through certifications and projects', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade500)),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              SizedBox(width: 150, height: 150, child: CustomPaint(painter: PieChartPainter(data: _interestPoints, careerInterests: _careerInterests))),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _interestPoints.entries.map((entry) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        children: [
-                          Container(width: 12, height: 12, decoration: BoxDecoration(color: _getInterestColor(entry.key), shape: BoxShape.circle)),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(entry.key, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
-                          Text('${entry.value.toInt()} pts', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600)),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
+          Text(
+            'Career Mastery',
+            style: GoogleFonts.poppins(
+              fontSize: 18, 
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1A1A1A),
+            ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            'Your progress towards becoming a $_activeCareerInterest',
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 32),
+          Center(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 200,
+                  height: 200,
+                  child: CircularProgressIndicator(
+                    value: _activeCareerProgress,
+                    strokeWidth: 12,
+                    backgroundColor: Colors.grey.shade100,
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF5B3FD8)),
+                    strokeCap: StrokeCap.round,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${(_activeCareerProgress * 100).toInt()}%',
+                      style: GoogleFonts.poppins(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF5B3FD8),
+                      ),
+                    ),
+                    Text(
+                      'Mastered',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          _buildActiveCareerCard(),
         ],
       ),
     );
   }
 
-  Color _getInterestColor(String interest) {
-    final List<Color> colors = [const Color(0xFF5B3FD8), const Color(0xFFF97316), const Color(0xFF10B981), const Color(0xFF3B82F6), const Color(0xFFEF4444), const Color(0xFF8B5CF6)];
-    int index = _careerInterests.indexOf(interest) % colors.length;
-    if (index < 0) index = 0;
-    return colors[index];
+  Widget _buildActiveCareerCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5B3FD8).withAlpha(10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF5B3FD8).withAlpha(30)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.rocket_launch, color: Color(0xFF5B3FD8), size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Current Target',
+                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF5B3FD8), fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  _activeCareerInterest!,
+                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF5B3FD8)),
+        ],
+      ),
+    );
   }
 
   Widget _buildVideoCard() {
@@ -427,31 +493,6 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
     final details = _labelDetails[label] ?? [];
     showDialog(context: context, builder: (context) => AlertDialog(title: Text(label, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)), content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: details.isEmpty ? [const Text('No details added yet.')] : details.map((d) => Padding(padding: const EdgeInsets.symmetric(vertical: 4.0), child: Row(children: [const Icon(Icons.check_circle, size: 16, color: Color(0xFF5B3FD8)), const SizedBox(width: 8), Expanded(child: Text(d, style: GoogleFonts.poppins()))]))).toList()), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))]));
   }
-}
-
-class PieChartPainter extends CustomPainter {
-  final Map<String, double> data;
-  final List<String> careerInterests;
-  PieChartPainter({required this.data, required this.careerInterests});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2); final radius = math.min(size.width / 2, size.height / 2); final total = data.values.fold(0.0, (sum, val) => sum + val);
-    if (total == 0) return;
-    double startAngle = -math.pi / 2;
-    final List<Color> colors = [const Color(0xFF5B3FD8), const Color(0xFFF97316), const Color(0xFF10B981), const Color(0xFF3B82F6), const Color(0xFFEF4444), const Color(0xFF8B5CF6)];
-    
-    for (var entry in data.entries) {
-      final sweepAngle = (entry.value / total) * 2 * math.pi;
-      int colorIndex = careerInterests.indexOf(entry.key) % colors.length;
-      if (colorIndex < 0) colorIndex = 0;
-      
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle, true, Paint()..color = colors[colorIndex]);
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle, true, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2);
-      startAngle += sweepAngle;
-    }
-    canvas.drawCircle(center, radius * 0.5, Paint()..color = Colors.white);
-  }
-  @override bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
 
 class ProfileImagePainter extends CustomPainter {
@@ -712,7 +753,7 @@ class _EducationViewPageState extends State<EducationViewPage> {
                             child: Text(
                               edu != null ? '${edu['yearFrom']}-${edu['yearTo']?.toString().substring(edu['yearTo'].toString().length - 2)}' : 'TBD',
                               style: GoogleFonts.poppins(
-                                color: edu != null ? Colors.white : Colors.grey.shade500,
+                                color: edu != null ? Colors.white : Colors.grey.shade50,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),

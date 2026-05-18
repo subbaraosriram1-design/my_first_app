@@ -11,6 +11,7 @@ abstract class AiService {
   Future<String> generateSummary(Map<String, dynamic> userData);
   Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer);
   Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext);
+  Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest);
 }
 
 /// Implementation using Groq
@@ -237,9 +238,10 @@ class GroqAiService implements AiService {
         2. Specifically PRAISE the user for their existing certifications and projects.
         3. For the skills list, provide EXACTLY $skillCount skills relevant to $targetCareer.
         4. RELEVANCE CHECK: Only suggest skills that are actually needed for $targetCareer. If a user has a certification in an unrelated area (e.g., C for Web Development), do not force its inclusion in the roadmap unless it's genuinely useful as a foundation.
-        5. EXCLUSION RULE: If the user ALREADY has an "Advanced" certification or significant project experience in a suggested skill, DO NOT show an "Add to Roadmap" button for it in the final output (mark "already_mastered": true).
-        6. For EACH skill, provide a "justification" explaining why it's crucial for this specific career path.
-        7. Return ONLY a valid JSON object.
+        5. PROFILE MATCHING: If a suggested skill is ALREADY in the user's "skills" list (${userData['skills']}), mark "already_in_profile": true.
+        6. EXCLUSION RULE: If the user ALREADY has an "Advanced" certification or significant project experience in a suggested skill, DO NOT show an "Add to Roadmap" button for it in the final output (mark "already_mastered": true).
+        7. For EACH skill, provide a "justification" explaining why it's crucial for this specific career path.
+        8. Return ONLY a valid JSON object.
         
         JSON Structure:
         {
@@ -259,6 +261,7 @@ class GroqAiService implements AiService {
               "name": "Skill Name",
               "justification": "Why this skill is important...",
               "already_mastered": false,
+              "already_in_profile": false,
               "user_status": "Status update..."
             }
           ]
@@ -313,6 +316,48 @@ class GroqAiService implements AiService {
       print("Error in getSkillResources: $e");
     }
     return {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest) async {
+    try {
+      final prompt = """
+        User Profile: ${jsonEncode(userData)}
+        Primary Career Interest: $primaryInterest
+
+        Act as a supportive and motivating career coach. Analyze the user's current profile in the context of their goal to become a $primaryInterest.
+
+        CRITICAL GUIDELINES:
+        1. Be EXTREMELY positive, encouraging, and inspiring.
+        2. SKILL GAP ANALYSIS: 
+           - Look at userData['skills'] and userData['resourceProgress'].
+           - Identify which skills they have already MASTERED or are currently in their profile.
+           - Identify which skills they need to IMPROVE or ACQUIRE for $primaryInterest.
+        3. Frame "Weaknesses" as "Exciting Growth Milestones" or "Areas to Shine". Never use negative language.
+        4. Identify 3-4 "Strengths" where the user is already doing great based on their profile skills.
+        5. Identify 3-4 "Areas to Shine" that represent the next steps in their roadmap.
+        6. Return ONLY a valid JSON object.
+
+        JSON Structure:
+        {
+          "strengths": [
+            {"title": "Skill/Area Name", "description": "Explain how their existing skill in this area gives them a head start..."}
+          ],
+          "opportunities": [
+            {"title": "Target Skill", "description": "Encouraging explanation of how mastering this specific skill from their roadmap will complete their profile..."}
+          ],
+          "closing_thought": "A final motivating sentence personalized to $primaryInterest."
+        }
+      """;
+
+      final result = await _callAi(prompt);
+      if (result != null) {
+        return json.decode(_stripMarkdown(result));
+      }
+    } catch (e) {
+      print("Error in getCareerAnalysis: $e");
+    }
+    return MockAiService().getCareerAnalysis(userData, primaryInterest);
   }
 
   String _stripMarkdown(String text) {
@@ -375,12 +420,14 @@ class MockAiService implements AiService {
           "name": "Flutter",
           "justification": "Leading framework for cross-platform apps.",
           "already_mastered": false,
+          "already_in_profile": false,
           "user_status": ""
         },
         {
           "name": "Problem Solving",
           "justification": "Essential for any high-level career.",
           "already_mastered": true,
+          "already_in_profile": true,
           "user_status": "Your work on previous projects shows you're a natural!"
         }
       ]
@@ -395,6 +442,22 @@ class MockAiService implements AiService {
       "trainings": [{"title": "$skill Mastery Course", "link": "https://udemy.com"}],
       "youtube": [{"title": "$skill Explained simply", "link": "https://youtube.com"}],
       "docs": [{"title": "Official $skill Documentation", "link": "https://docs.com"}]
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest) async {
+    await Future.delayed(const Duration(seconds: 1));
+    return {
+      "strengths": [
+        {"title": "Foundational Knowledge", "description": "You have a solid start in your journey!"},
+        {"title": "Dedication", "description": "Your commitment to learning is truly inspiring!"}
+      ],
+      "opportunities": [
+        {"title": "Practical Projects", "description": "Building more things will make you shine even brighter!"},
+        {"title": "Networking", "description": "Connecting with others will open up amazing new doors!"}
+      ],
+      "closing_thought": "You have everything it takes to succeed as a $primaryInterest!"
     };
   }
 }

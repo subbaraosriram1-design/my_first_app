@@ -41,7 +41,7 @@ class _CareerPlanScreenState extends State<CareerPlanScreen> {
         });
 
         // AUTO-SAVE news when plan is generated to ensure it shows in Roadmap tab
-        if (plan != null && plan['industry_news'] != null) {
+        if (plan['industry_news'] != null) {
           final currentNews = Map<String, dynamic>.from(userData['careerNews'] ?? {});
           currentNews[widget.targetCareer] = plan['industry_news'];
           await FirebaseService.instance.saveResume(userId, {'careerNews': currentNews});
@@ -219,13 +219,18 @@ class _CareerPlanScreenState extends State<CareerPlanScreen> {
         final String userStatus = skillData['user_status'] ?? '';
         
         final bool isAlreadyInRoadmap = activeRoadmap.contains(skillName);
+        final bool isAlreadyInProfile = skillData['already_in_profile'] == true;
+        final bool isAlreadyMastered = skillData['already_mastered'] == true;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade100),
+            border: Border.all(
+              color: isAlreadyInProfile ? const Color(0xFF8B5CF6).withAlpha(40) : Colors.grey.shade100,
+              width: isAlreadyInProfile ? 2 : 1,
+            ),
             boxShadow: [
               BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 10, offset: const Offset(0, 4)),
             ],
@@ -234,10 +239,24 @@ class _CareerPlanScreenState extends State<CareerPlanScreen> {
             shape: const RoundedRectangleBorder(side: BorderSide.none),
             collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
             leading: CircleAvatar(
-              backgroundColor: const Color(0xFF5B3FD8).withAlpha(10),
-              child: Text('${index + 1}', style: const TextStyle(color: Color(0xFF5B3FD8), fontWeight: FontWeight.bold)),
+              backgroundColor: isAlreadyInProfile 
+                  ? const Color(0xFF8B5CF6).withAlpha(20) 
+                  : const Color(0xFF5B3FD8).withAlpha(10),
+              child: isAlreadyInProfile 
+                  ? const Icon(Icons.sync, color: Color(0xFF8B5CF6), size: 18)
+                  : Text('${index + 1}', style: const TextStyle(color: Color(0xFF5B3FD8), fontWeight: FontWeight.bold)),
             ),
-            title: Text(skillName, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
+            title: Row(
+              children: [
+                Expanded(child: Text(skillName, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15))),
+                if (isAlreadyInProfile)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(color: const Color(0xFF8B5CF6).withAlpha(20), borderRadius: BorderRadius.circular(4)),
+                    child: Text('In Profile', style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF8B5CF6), fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
             subtitle: userStatus.isNotEmpty 
                 ? Text(userStatus, style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF10B981), fontWeight: FontWeight.w500))
                 : null,
@@ -252,19 +271,22 @@ class _CareerPlanScreenState extends State<CareerPlanScreen> {
                       style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600, height: 1.5),
                     ),
                     const SizedBox(height: 16),
-                    if (skillData['already_mastered'] == true)
+                    if (isAlreadyMastered)
                       _buildStatusContainer('Mastered! No roadmap needed.', const Color(0xFF10B981))
                     else if (isAlreadyInRoadmap)
-                      _buildStatusContainer('Added to Roadmap', const Color(0xFF5B3FD8))
+                      _buildStatusContainer(
+                        isAlreadyInProfile ? 'Already in Profile (Continuing)' : 'Added to Roadmap', 
+                        isAlreadyInProfile ? const Color(0xFF8B5CF6) : const Color(0xFF5B3FD8)
+                      )
                     else
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: () => _addSkillToRoadmap(skillName),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Add to Roadmap'),
+                          icon: Icon(isAlreadyInProfile ? Icons.sync : Icons.add, size: 18),
+                          label: Text(isAlreadyInProfile ? 'Sync & Continue' : 'Add to Roadmap'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5B3FD8),
+                            backgroundColor: isAlreadyInProfile ? const Color(0xFF8B5CF6) : const Color(0xFF5B3FD8),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             elevation: 0,
@@ -431,7 +453,7 @@ class _CareerPlanScreenState extends State<CareerPlanScreen> {
       children: [
         Text('Recommended Roadmap Steps', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        ...steps.map((step) => _buildStepItem(step['title'], step['duration'])).toList(),
+        ...steps.map((step) => _buildStepItem(step['title'], step['duration'])),
       ],
     );
   }

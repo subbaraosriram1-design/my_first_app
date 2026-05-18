@@ -367,13 +367,20 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
       future: FirebaseService.instance.getResume(FirebaseService.instance.currentUserId!),
       builder: (context, snapshot) {
         double percentage = 0;
+        bool isAlreadyInProfile = false;
+        
         if (snapshot.hasData) {
+          final List<dynamic> profileSkills = snapshot.data!['skills'] ?? [];
+          isAlreadyInProfile = profileSkills.any((s) => s.toString().toLowerCase() == skill.toLowerCase());
+
           final progress = snapshot.data!['resourceProgress'] ?? {};
           final skillProgress = progress[skill] ?? {};
           final completed = (skillProgress['completedResources'] as List?)?.length ?? 0;
           final total = (skillProgress['totalResources'] as int?) ?? 1;
           percentage = (completed / total).clamp(0.0, 1.0);
         }
+
+        final Color primaryColor = isAlreadyInProfile ? const Color(0xFF8B5CF6) : const Color(0xFF10B981);
 
         return InkWell(
           onTap: () {
@@ -387,11 +394,15 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: isAlreadyInProfile ? primaryColor.withAlpha(40) : Colors.grey.shade200, width: isAlreadyInProfile ? 2 : 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (isAlreadyInProfile) ...[
+                  Icon(Icons.sync, color: primaryColor, size: 14),
+                  const SizedBox(width: 8),
+                ],
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -406,7 +417,7 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
                       child: LinearProgressIndicator(
                         value: percentage,
                         backgroundColor: Colors.grey.shade100,
-                        color: const Color(0xFF10B981),
+                        color: primaryColor,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -415,7 +426,7 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
                 const SizedBox(width: 8),
                 Text(
                   '${(percentage * 100).toInt()}%',
-                  style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF10B981)),
+                  style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: primaryColor),
                 ),
                 const SizedBox(width: 4),
                 const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.grey),
