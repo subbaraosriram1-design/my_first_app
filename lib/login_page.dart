@@ -76,6 +76,9 @@ class _LoginPageState extends State<LoginPage> {
   String? _selectedSkillForCert;
   final List<Certification> _certifications = [];
   final List<String> _certAttachments = [];
+  
+  String _selectedSkillLevel = 'Basic';
+  final List<String> _skillLevels = ['Basic', 'Intermediate', 'Advanced'];
 
   // Step 8: Goals
   final List<String> _extracurricularMotivations = [];
@@ -1656,15 +1659,39 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _buildTextField(_skillController, 'Skill name', Icons.bolt_outlined)),
+            Expanded(flex: 2, child: _buildTextField(_skillController, 'Skill name', Icons.bolt_outlined)),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 1,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedSkillLevel,
+                    isExpanded: true,
+                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.black87),
+                    items: _skillLevels.map((level) => DropdownMenuItem(value: level, child: Text(level))).toList(),
+                    onChanged: (val) => setState(() => _selectedSkillLevel = val ?? 'Basic'),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(width: 8),
             _buildSmallAddButton(() {
-              final skill = _skillController.text.trim();
-              if (skill.isNotEmpty && !_skills.contains(skill)) {
-                setState(() {
-                  _skills.add(skill);
-                  _skillController.clear();
-                });
+              final skillName = _skillController.text.trim();
+              if (skillName.isNotEmpty) {
+                final skillWithLevel = '$skillName ($_selectedSkillLevel)';
+                if (!_skills.contains(skillWithLevel)) {
+                  setState(() {
+                    _skills.add(skillWithLevel);
+                    _skillController.clear();
+                  });
+                }
               }
             }),
           ],

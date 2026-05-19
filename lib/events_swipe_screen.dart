@@ -57,7 +57,7 @@ class _EventsSwipeScreenState extends State<EventsSwipeScreen> {
   }
 
   void _onSwipe(bool isRight) {
-    if (isRight) {
+    if (isRight && _currentIndex < _events.length) {
       context.read<EventsProvider>().saveEvent(_events[_currentIndex]);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -67,9 +67,11 @@ class _EventsSwipeScreenState extends State<EventsSwipeScreen> {
         ),
       );
     }
-    setState(() {
-      _currentIndex++;
-    });
+    if (mounted) {
+      setState(() {
+        _currentIndex++;
+      });
+    }
   }
 
   @override
@@ -234,7 +236,7 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(10),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -284,7 +286,7 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF5B3FD8).withAlpha(20),
+                                color: const Color(0xFF5B3FD8).withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -331,7 +333,7 @@ class _SwipeableCardState extends State<SwipeableCard> with SingleTickerProvider
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.green.withAlpha(20),
+                                color: Colors.green.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(

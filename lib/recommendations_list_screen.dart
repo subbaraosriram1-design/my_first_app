@@ -4,7 +4,6 @@ import 'ai_service.dart';
 import 'firebase_service.dart';
 import 'location_service.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'general_detail_screen.dart';
 
 class RecommendationsListScreen extends StatefulWidget {

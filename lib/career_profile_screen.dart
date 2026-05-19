@@ -8,6 +8,7 @@ import 'firebase_service.dart';
 import 'placeholder_screens.dart';
 import 'login_page.dart';
 import 'ai_service.dart';
+import 'notification_service.dart';
 
 class CareerProfileScreen extends StatefulWidget {
   const CareerProfileScreen({super.key});
@@ -29,6 +30,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
   List<dynamic> _testScores = [];
   String? _activeCareerInterest;
   double _activeCareerProgress = 0.0;
+  int _notificationCount = 0;
   bool _isLoading = true;
 
   @override
@@ -87,9 +89,8 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
         }
 
         // Calculate Career Progress
-        List<String> userInterests = [];
         if (data['careerInterests'] is List) {
-          userInterests = (data['careerInterests'] as List).map((e) => e.toString()).toList();
+          // userInterests is used later in calculation
         }
 
         String? activeInterest = data['activeCareerInterest'];
@@ -122,9 +123,13 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
 
               double skillPercent = (completedResources.length / totalResources).clamp(0.0, 1.0);
               // Simple level-based completion estimation
-              if (skillPercent >= 0.95) completedLevels += 3;
-              else if (skillPercent >= 0.6) completedLevels += 2;
-              else if (skillPercent >= 0.2) completedLevels += 1;
+              if (skillPercent >= 0.95) {
+                completedLevels += 3;
+              } else if (skillPercent >= 0.6) {
+                completedLevels += 2;
+              } else if (skillPercent >= 0.2) {
+                completedLevels += 1;
+              }
             }
             
             activeProgress = (completedLevels / totalRequired).clamp(0.0, 1.0);
@@ -144,6 +149,9 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
           _radarLabels = labels;
           _labelProgress = progress;
           _labelDetails = details;
+          
+          final reminders = List.from(data['reminders'] ?? []);
+          _notificationCount = NotificationService.instance.getDueNotifications(reminders).length;
         });
       }
     }
@@ -213,7 +221,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF5B3FD8))));
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF10B981))));
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -233,7 +241,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
         ),
         actions: [
           _buildAppBarIcon(Icons.work_outline, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WorkPage()))),
-          _buildAppBarIcon(Icons.notifications_none, hasBadge: true, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage()))),
+          _buildAppBarIcon(Icons.notifications_none, hasBadge: _notificationCount > 0, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage()))),
           _buildAppBarIcon(Icons.more_vert, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MoreOptionsPage()))),
           const SizedBox(width: 16),
         ],
@@ -294,7 +302,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
                     value: _activeCareerProgress,
                     strokeWidth: 12,
                     backgroundColor: Colors.grey.shade100,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF5B3FD8)),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
                     strokeCap: StrokeCap.round,
                   ),
                 ),
@@ -306,7 +314,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF5B3FD8),
+                        color: const Color(0xFF10B981),
                       ),
                     ),
                     Text(
@@ -333,13 +341,13 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF5B3FD8).withAlpha(10),
+        color: const Color(0xFF10B981).withAlpha(10),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF5B3FD8).withAlpha(30)),
+        border: Border.all(color: const Color(0xFF10B981).withAlpha(30)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.rocket_launch, color: Color(0xFF5B3FD8), size: 24),
+          const Icon(Icons.rocket_launch, color: Color(0xFF10B981), size: 24),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -347,7 +355,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
               children: [
                 Text(
                   'Current Target',
-                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF5B3FD8), fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF10B981), fontWeight: FontWeight.bold),
                 ),
                 Text(
                   _activeCareerInterest!,
@@ -356,7 +364,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF5B3FD8)),
+          const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF10B981)),
         ],
       ),
     );
@@ -380,7 +388,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _pickVideo,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5B3FD8), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), elevation: 0),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), elevation: 0),
               child: Text('Add video', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500)),
             ),
           ],
@@ -551,8 +559,8 @@ class RadarChartPainter extends CustomPainter {
     }
     path.close();
     if (progress.values.any((v) => v > 0)) { 
-      canvas.drawPath(path, Paint()..color = const Color(0xFF5B3FD8).withAlpha(128)); 
-      canvas.drawPath(path, Paint()..color = const Color(0xFF5B3FD8)..style = PaintingStyle.stroke..strokeWidth = 2); 
+      canvas.drawPath(path, Paint()..color = const Color(0xFF10B981).withValues(alpha: 0.5)); 
+      canvas.drawPath(path, Paint()..color = const Color(0xFF10B981)..style = PaintingStyle.stroke..strokeWidth = 2);
     }
   }
   @override bool shouldRepaint(CustomPainter oldDelegate) => true;
@@ -867,8 +875,8 @@ class _ProfileSectionState extends State<_ProfileSection> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: const Color(0xFFF8F7FF), borderRadius: BorderRadius.circular(20)),
-      child: Column(children: [ListTile(onTap: () => setState(() => _isExpanded = !_isExpanded), leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), child: Icon(widget.icon, color: const Color(0xFF5B3FD8), size: 20)), title: Text(widget.title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A))), trailing: GestureDetector(onTap: widget.onEdit, child: Icon(widget.content == null ? Icons.add : Icons.edit_outlined, color: const Color(0xFF5B3FD8), size: 20))), if (_isExpanded && widget.content != null) Padding(padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16), child: widget.content!)]),
+      decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.05), borderRadius: BorderRadius.circular(20)),
+      child: Column(children: [ListTile(onTap: () => setState(() => _isExpanded = !_isExpanded), leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), child: Icon(widget.icon, color: const Color(0xFF10B981), size: 20)), title: Text(widget.title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A))), trailing: GestureDetector(onTap: widget.onEdit, child: Icon(widget.content == null ? Icons.add : Icons.edit_outlined, color: const Color(0xFF10B981), size: 20))), if (_isExpanded && widget.content != null) Padding(padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16), child: widget.content!)]),
     );
   }
 }

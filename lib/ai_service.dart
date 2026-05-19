@@ -13,6 +13,8 @@ abstract class AiService {
   Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext);
   Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest);
   Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category);
+  Future<List<Map<String, dynamic>>> generatePersonalPlan(String title, String description, List<String> currentSkills);
+  Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest);
 }
 
 /// Implementation using Groq
@@ -445,6 +447,54 @@ class GroqAiService implements AiService {
     return [];
   }
 
+  @override
+  Future<List<Map<String, dynamic>>> generatePersonalPlan(String title, String description, List<String> currentSkills) async {
+    try {
+      final prompt = """
+        Goal: $title
+        Description: $description
+        Current Skills: ${currentSkills.join(", ")}
+
+        Generate a 5-step personal development plan to achieve this goal.
+        Return ONLY a raw JSON list of objects with "title" and "description" for each step.
+        Do not include markdown code blocks or additional text.
+      """;
+      
+      final result = await _callAi(prompt);
+      if (result != null) {
+        final List<dynamic> decoded = json.decode(_stripMarkdown(result));
+        return List<Map<String, dynamic>>.from(decoded);
+      }
+    } catch (e) {
+      print("Error in generatePersonalPlan: $e");
+    }
+    return MockAiService().generatePersonalPlan(title, description, currentSkills);
+  }
+
+  @override
+  Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest) async {
+    try {
+      final prompt = """
+        Skill: $skill
+        Career Interest: $careerInterest
+        
+        Analyze if this skill is relevant to this career.
+        Return ONLY a raw JSON object with:
+        "is_relevant": true/false,
+        "connection_type": "Direct" or "Transferable" or "Indirect",
+        "explanation": "Short 1-sentence explanation".
+        Do not include markdown code blocks or additional text.
+      """;
+      final result = await _callAi(prompt);
+      if (result != null) {
+        return json.decode(_stripMarkdown(result));
+      }
+    } catch (e) {
+      print("Error in validateSkillRelevance: $e");
+    }
+    return MockAiService().validateSkillRelevance(skill, careerInterest);
+  }
+
   String _stripMarkdown(String text) {
     return text.replaceAll('```json', '').replaceAll('```', '').trim();
   }
@@ -550,5 +600,22 @@ class MockAiService implements AiService {
   Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category) async {
     await Future.delayed(const Duration(seconds: 1));
     return [];
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> generatePersonalPlan(String title, String description, List<String> currentSkills) async {
+    return [
+      {'title': 'Research Foundation', 'description': 'Understand the core concepts of $title.'},
+      {'title': 'Hands-on Practice', 'description': 'Apply $description through a small project.'},
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest) async {
+    return {
+      'is_relevant': true,
+      'connection_type': 'Direct',
+      'explanation': 'This skill is highly relevant to your chosen career path.'
+    };
   }
 }

@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import 'login_page.dart';
 import 'career_profile_screen.dart';
 import 'ai_insights_screen.dart';
-import 'roadmap_view_screen.dart';
+import 'roadmap_choice_screen.dart';
+import 'reminders_screen.dart';
 import 'events_provider.dart';
 
 void main() async {
@@ -37,8 +38,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5B3FD8),
-          primary: const Color(0xFF5B3FD8),
+          seedColor: const Color(0xFF10B981),
+          primary: const Color(0xFF10B981),
           surface: Colors.white,
         ),
         useMaterial3: true,
@@ -85,8 +86,8 @@ class _MyHomePageState extends State<MyHomePage> {
     // Screens for the navigation
     final List<Widget> screens = [
       const CareerProfileScreen(), // The new profile/home screen
-      const RoadmapViewScreen(),
-      const Center(child: Text('Connections Screen')),
+      const RoadmapChoiceScreen(),
+      const RemindersScreen(),
       const Center(child: Text('Chat Screen')),
       const AiInsightsScreen(),
     ];
@@ -122,9 +123,9 @@ class _MyHomePageState extends State<MyHomePage> {
               label: 'Roadmap',
             ),
             NavigationDestination(
-              icon: Icon(Icons.people_outline, color: _selectedIndex == 2 ? const Color(0xFF5B3FD8) : Colors.grey),
-              selectedIcon: const Icon(Icons.people, color: Color(0xFF5B3FD8)),
-              label: 'Connections',
+              icon: Icon(Icons.notifications_outlined, color: _selectedIndex == 2 ? const Color(0xFF5B3FD8) : Colors.grey),
+              selectedIcon: const Icon(Icons.notifications, color: Color(0xFF5B3FD8)),
+              label: 'Reminders',
             ),
             NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline, color: _selectedIndex == 3 ? const Color(0xFF5B3FD8) : Colors.grey),

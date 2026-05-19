@@ -112,4 +112,63 @@ class FirebaseService {
       return null;
     }
   }
+
+  // Skill Resources Caching
+  Future<void> saveSkillResources(String skill, Map<String, dynamic> resources) async {
+    try {
+      await _firestore.collection('skill_resources').doc(skill.toLowerCase()).set({
+        'resources': resources,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Firestore SaveSkillResources Error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> getSkillResources(String skill) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('skill_resources').doc(skill.toLowerCase()).get();
+      if (doc.exists) {
+        return (doc.data() as Map<String, dynamic>)['resources'];
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Firestore GetSkillResources Error: $e');
+      return null;
+    }
+  }
+
+  // Personal Roadmaps
+  Future<void> savePersonalRoadmap(String userId, Map<String, dynamic> roadmap) async {
+    try {
+      final docRef = _firestore.collection('resumes').doc(userId);
+      final doc = await docRef.get();
+      Map<String, dynamic> personalRoadmaps = {};
+      if (doc.exists) {
+        personalRoadmaps = Map<String, dynamic>.from(doc.data()?['personalRoadmaps'] ?? {});
+      }
+      
+      final String id = roadmap['id'] ?? DateTime.now().millisecondsSinceEpoch.toString();
+      roadmap['id'] = id;
+      personalRoadmaps[id] = roadmap;
+      
+      await docRef.update({'personalRoadmaps': personalRoadmaps});
+    } catch (e) {
+      debugPrint('Firestore SavePersonalRoadmap Error: $e');
+    }
+  }
+
+  Future<void> deletePersonalRoadmap(String userId, String roadmapId) async {
+    try {
+      final docRef = _firestore.collection('resumes').doc(userId);
+      final doc = await docRef.get();
+      if (doc.exists) {
+        Map<String, dynamic> personalRoadmaps = Map<String, dynamic>.from(doc.data()?['personalRoadmaps'] ?? {});
+        personalRoadmaps.remove(roadmapId);
+        await docRef.update({'personalRoadmaps': personalRoadmaps});
+      }
+    } catch (e) {
+      debugPrint('Firestore DeletePersonalRoadmap Error: $e');
+    }
+  }
 }

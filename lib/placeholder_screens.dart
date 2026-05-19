@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'firebase_service.dart';
 import 'ai_insights_screen.dart';
+import 'notification_service.dart';
+import 'reminder_detail_screen.dart';
 
 class PlaceholderPage extends StatelessWidget {
   final String title;
@@ -327,10 +329,165 @@ class WorkPage extends StatelessWidget {
   Widget build(BuildContext context) => const PlaceholderPage(title: 'Work');
 }
 
-class NotificationsPage extends StatelessWidget {
+class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
+
   @override
-  Widget build(BuildContext context) => const PlaceholderPage(title: 'Notifications');
+  State<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends State<NotificationsPage> {
+  List<Map<String, dynamic>> _activeNotifications = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    final userId = FirebaseService.instance.currentUserId;
+    if (userId != null) {
+      final data = await FirebaseService.instance.getResume(userId);
+      final reminders = List.from(data?['reminders'] ?? []);
+      final active = NotificationService.instance.getDueNotifications(reminders);
+      if (mounted) {
+        setState(() {
+          _activeNotifications = active;
+          _isLoading = false;
+        });
+      }
+    } else {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('Notifications', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
+          : _activeNotifications.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _activeNotifications.length,
+                  itemBuilder: (context, index) {
+                    final n = _activeNotifications[index];
+                    return _buildNotificationCard(n);
+                  },
+                ),
+    );
+  }
+
+  Widget _buildNotificationCard(Map<String, dynamic> n) {
+    final reminder = n['reminder'];
+    final type = reminder['type'];
+    Color color = const Color(0xFF10B981);
+    IconData icon = Icons.notifications_active_outlined;
+
+    if (type == 'exam') {
+      color = const Color(0xFF0F172A);
+      icon = Icons.school_outlined;
+    } else if (type == 'assignment') {
+      color = const Color(0xFF059669);
+      icon = Icons.assignment_outlined;
+    }
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ReminderDetailScreen(reminder: reminder)),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    n['message'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    n['time'] ?? 'Today',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade300),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications_none_outlined, size: 64, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            'No notifications yet',
+            style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'We\'ll notify you when tasks need attention.',
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade400),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class MenuPage extends StatefulWidget {
@@ -419,7 +576,7 @@ class _MenuPageState extends State<MenuPage> {
                     colors: [const Color(0xFFFFF7ED), const Color(0xFFFFEDD5)],
                   ),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFFE4E6).withOpacity(0.5)),
+                  border: Border.all(color: const Color(0xFFFFE4E6).withValues(alpha: 0.5)),
                 ),
                 child: Row(
                   children: [

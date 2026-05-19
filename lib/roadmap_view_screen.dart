@@ -6,7 +6,9 @@ import 'ai_service.dart';
 import 'career_plan_screen.dart';
 
 class RoadmapViewScreen extends StatefulWidget {
-  const RoadmapViewScreen({super.key});
+  final String? targetCareer;
+  final Color themeColor;
+  const RoadmapViewScreen({super.key, this.targetCareer, this.themeColor = const Color(0xFF5B3FD8)});
 
   @override
   State<RoadmapViewScreen> createState() => _RoadmapViewScreenState();
@@ -15,10 +17,13 @@ class RoadmapViewScreen extends StatefulWidget {
 class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
   bool _isLoading = true;
   bool _isNewsLoading = false;
+  bool _isValidating = false;
   Map<String, dynamic> _careerRoadmaps = {};
   Map<String, dynamic> _careerNews = {};
+  Map<String, dynamic> _deletedSkills = {};
   String? _activeCareerInterest;
   final AiService _aiService = GroqAiService();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -34,16 +39,190 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
         setState(() {
           _careerRoadmaps = Map<String, dynamic>.from(data?['careerRoadmaps'] ?? {});
           _careerNews = Map<String, dynamic>.from(data?['careerNews'] ?? {});
-          _activeCareerInterest = data?['activeCareerInterest'];
-          _isLoading = false;
+          _deletedSkills = Map<String, dynamic>.from(data?['deletedSkills'] ?? {});
+          _activeCareerInterest = widget.targetCareer ?? data?['activeCareerInterest'];
         });
 
-        // "every time user opeded that roadmap based on current interest we have display treanining news"
         if (_activeCareerInterest != null) {
-          _fetchFreshNews(_activeCareerInterest!);
+          final cachedPlans = data?['careerPlans'] as Map<String, dynamic>?;
+          if (cachedPlans == null || !cachedPlans.containsKey(_activeCareerInterest)) {
+            // Auto generate plan if missing
+            await _autoGeneratePlan(_activeCareerInterest!, data!);
+          } else {
+            setState(() => _isLoading = false);
+            _fetchFreshNews(_activeCareerInterest!);
+          }
+        } else {
+          setState(() => _isLoading = false);
         }
       }
     }
+  }
+
+  Future<void> _autoGeneratePlan(String career, Map<String, dynamic> userData) async {
+    setState(() => _isLoading = true);
+    try {
+      final plan = await _aiService.getDetailedCareerPlan(userData, career);
+      final userId = FirebaseService.instance.currentUserId!;
+      
+      final currentPlans = Map<String, dynamic>.from(userData['careerPlans'] ?? {});
+      currentPlans[career] = plan;
+      
+      // Merge with existing roadmap, respecting deleted skills
+      List<String> currentRoadmap = List<String>.from(_careerRoadmaps[career] ?? []);
+      List<String> deletedList = List<String>.from(_deletedSkills[career] ?? []);
+      
+      final requiredSkills = (plan['required_skills'] as List?)
+          ?.where((s) => s['already_mastered'] != true)
+          .map((s) => s['name'] as String)
+          .toList() ?? [];
+
+      for (var skill in requiredSkills) {
+        if (!currentRoadmap.contains(skill) && !deletedList.contains(skill)) {
+          currentRoadmap.add(skill);
+        }
+      }
+      _careerRoadmaps[career] = currentRoadmap;
+
+      await FirebaseService.instance.saveResume(userId, {
+        'careerPlans': currentPlans,
+        'careerRoadmaps': _careerRoadmaps,
+        if (plan['industry_news'] != null) 'careerNews': {career: plan['industry_news']}
+      });
+
+      if (mounted) {
+        setState(() {
+          _careerNews[career] = plan['industry_news'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error auto-generating plan: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _addSkill(String career, String skill) async {
+    final userId = FirebaseService.instance.currentUserId;
+    if (userId == null) return;
+
+    List<String> currentSkills = List<String>.from(_careerRoadmaps[career] ?? []);
+    if (!currentSkills.contains(skill)) {
+      currentSkills.add(skill);
+      _careerRoadmaps[career] = currentSkills;
+
+      await FirebaseService.instance.saveResume(userId, {
+        'careerRoadmaps': _careerRoadmaps,
+      });
+      _loadRoadmaps();
+    }
+  }
+
+  Future<void> _validateAndAddSkill(String skill) async {
+    if (skill.isEmpty || _activeCareerInterest == null) return;
+    
+    setState(() => _isValidating = true);
+    
+    try {
+      final result = await _aiService.validateSkillRelevance(skill, _activeCareerInterest!);
+      
+      if (mounted) {
+        setState(() => _isValidating = false);
+        _searchController.clear();
+
+        String selectedLevel = 'Basic';
+        showDialog(
+          context: context,
+          builder: (context) => StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(
+                      result['is_relevant'] ? Icons.check_circle : Icons.info_outline,
+                      color: result['is_relevant'] ? Colors.green : Colors.orange,
+                    ),
+                    const SizedBox(width: 10),
+                    Text('AI Insight', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Connection: ${result['connection_type']}',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: widget.themeColor),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(result['explanation'], style: GoogleFonts.poppins()),
+                    const SizedBox(height: 24),
+                    Text('Select Your Current Level:', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedLevel,
+                          isExpanded: true,
+                          items: ['Basic', 'Intermediate', 'Advanced'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                          onChanged: (val) => setDialogState(() => selectedLevel = val ?? 'Basic'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _addSkill(_activeCareerInterest!, '$skill ($selectedLevel)');
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: widget.themeColor, foregroundColor: Colors.white),
+                    child: const Text('Add to Roadmap'),
+                  ),
+                ],
+              );
+            }
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isValidating = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error validating skill')));
+      }
+    }
+  }
+
+  Future<void> _deleteSkill(String career, String skill) async {
+    final userId = FirebaseService.instance.currentUserId;
+    if (userId == null) return;
+
+    setState(() => _isLoading = true);
+
+    List<String> currentSkills = List<String>.from(_careerRoadmaps[career] ?? []);
+    currentSkills.remove(skill);
+    _careerRoadmaps[career] = currentSkills;
+
+    List<String> deletedList = List<String>.from(_deletedSkills[career] ?? []);
+    if (!deletedList.contains(skill)) {
+      deletedList.add(skill);
+    }
+    _deletedSkills[career] = deletedList;
+
+    await FirebaseService.instance.saveResume(userId, {
+      'careerRoadmaps': _careerRoadmaps,
+      'deletedSkills': _deletedSkills,
+    });
+
+    _loadRoadmaps();
   }
 
   Future<void> _fetchFreshNews(String career) async {
@@ -97,6 +276,11 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
                         List<String>.from(_careerRoadmaps[_activeCareerInterest] ?? [])
                       ),
                     ),
+                    // Search Bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      child: _buildSearchBar(),
+                    ),
                     // Scrollable News and Skills
                     Expanded(
                       child: SingleChildScrollView(
@@ -104,6 +288,7 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            const SizedBox(height: 16),
                             _buildSkillsSection(
                               _activeCareerInterest!, 
                               List<String>.from(_careerRoadmaps[_activeCareerInterest] ?? [])
@@ -116,6 +301,38 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
                     ),
                   ],
                 ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: GoogleFonts.poppins(fontSize: 14),
+        onSubmitted: (value) => _validateAndAddSkill(value.trim()),
+        decoration: InputDecoration(
+          hintText: 'Search or add new course/skill...',
+          hintStyle: GoogleFonts.poppins(color: Colors.grey.shade400),
+          prefixIcon: Icon(Icons.search, color: widget.themeColor),
+          suffixIcon: _isValidating 
+            ? const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                color: widget.themeColor,
+                onPressed: () => _validateAndAddSkill(_searchController.text.trim()),
+              ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
     );
   }
 
@@ -139,14 +356,14 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E293B), Color(0xFF334155)],
+            gradient: LinearGradient(
+              colors: [widget.themeColor.withValues(alpha: 0.8), widget.themeColor],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
-              BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 15, offset: const Offset(0, 8)),
+              BoxShadow(color: widget.themeColor.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 8)),
             ],
           ),
           child: Row(
@@ -187,13 +404,13 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF97316).withAlpha(40),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFF97316).withAlpha(100)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         '$skillsLeft Left',
-                        style: GoogleFonts.poppins(color: const Color(0xFFFB923C), fontSize: 11, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.poppins(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -212,7 +429,7 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
       children: [
         Row(
           children: [
-            const Icon(Icons.auto_awesome_outlined, color: Color(0xFF5B3FD8), size: 20),
+            Icon(Icons.auto_awesome_outlined, color: widget.themeColor, size: 20),
             const SizedBox(width: 8),
             Text(
               'Your Learning Path',
@@ -371,7 +588,12 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
         
         if (snapshot.hasData) {
           final List<dynamic> profileSkills = snapshot.data!['skills'] ?? [];
-          isAlreadyInProfile = profileSkills.any((s) => s.toString().toLowerCase() == skill.toLowerCase());
+          // Match base skill name even if it has level info
+          isAlreadyInProfile = profileSkills.any((s) {
+            final String skillStr = s.toString().toLowerCase();
+            final String targetSkill = skill.toLowerCase();
+            return skillStr == targetSkill || skillStr.startsWith('$targetSkill (');
+          });
 
           final progress = snapshot.data!['resourceProgress'] ?? {};
           final skillProgress = progress[skill] ?? {};
@@ -380,7 +602,7 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
           percentage = (completed / total).clamp(0.0, 1.0);
         }
 
-        final Color primaryColor = isAlreadyInProfile ? const Color(0xFF8B5CF6) : const Color(0xFF10B981);
+        final Color primaryColor = isAlreadyInProfile ? const Color(0xFF8B5CF6) : widget.themeColor;
 
         return InkWell(
           onTap: () {
@@ -394,7 +616,7 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: isAlreadyInProfile ? primaryColor.withAlpha(40) : Colors.grey.shade200, width: isAlreadyInProfile ? 2 : 1),
+              border: Border.all(color: isAlreadyInProfile ? primaryColor.withValues(alpha: 0.15) : Colors.grey.shade200, width: isAlreadyInProfile ? 2 : 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -430,6 +652,29 @@ class _RoadmapViewScreenState extends State<RoadmapViewScreen> {
                 ),
                 const SizedBox(width: 4),
                 const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.grey),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Delete Skill', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                        content: Text('Are you sure you want to remove "$skill" from your $career roadmap?', style: GoogleFonts.poppins()),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _deleteSkill(career, skill);
+                            },
+                            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                ),
               ],
             ),
           ),
