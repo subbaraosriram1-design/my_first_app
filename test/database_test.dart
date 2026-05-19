@@ -1,3 +1,4 @@
+// ignore_for_file: spell_checker
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_first_app/database_helper.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';

@@ -12,6 +12,7 @@ abstract class AiService {
   Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer);
   Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext);
   Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest);
+  Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category);
 }
 
 /// Implementation using Groq
@@ -360,6 +361,90 @@ class GroqAiService implements AiService {
     return MockAiService().getCareerAnalysis(userData, primaryInterest);
   }
 
+  @override
+  Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category) async {
+    try {
+      String contextPrompt = "";
+      String locationContext = "";
+      
+      if (userData.containsKey('current_lat') && userData.containsKey('current_lng')) {
+        locationContext = "The user is located at latitude: ${userData['current_lat']}, longitude: ${userData['current_lng']}. Prioritize recommendations within 300km.";
+      }
+
+      if (category == 'Events and Activities') {
+        contextPrompt = """
+        User Interests: ${userData['hobbies'] ?? []}
+        User Goals: ${userData['goals'] ?? {}}
+        
+        Strict Guidelines for Events and Activities:
+        1. Recommendations must ONLY depend on the user's selected interests (hobbies) and goals.
+        2. If interest is 'Cricket', find: Turfs, Grounds, Coaching camps, Local matches, Events, Practice sessions.
+        3. If interest is 'Coding', find: Hackathons, meetups, workshops, bootcamps.
+        4. If interest is 'Gaming', find: Esports, cafes, tournaments, LAN events.
+        5. If interest is 'Chess', find: Tournaments, clubs, coaching.
+        6. Integrate data logic from: Playo, KheloMore, Meetup, BookMyShow, Eventbrite.
+        7. MANDATORY: For every event, provide a REALISTIC 'image' URL from Unsplash or similar service related to the specific activity (e.g., cricket turf image for cricket events). Do not leave image null.
+        """;
+      } else {
+        contextPrompt = "Based on career interests: ${userData['careerInterests'] ?? []}, skills: ${userData['skills'] ?? []}, and projects: ${userData['projects'] ?? []}. Profile: Age: ${userData['age']}, Gender: ${userData['gender']}.";
+      }
+
+      final prompt = """
+        User Profile Summary: $contextPrompt
+        $locationContext
+        Category: $category
+
+        Act as a career guidance AI. Generate 5 realistic, personalized recommendations for $category.
+        
+        For Jobs, use: LinkedIn, Naukri, Indeed, Foundit, Glassdoor, Cutshort, Wellfound, HackerRank, Hired, or Government portals like NCS, SSC, UPSC.
+        For Internships, use: Internshala, LetsIntern, HelloIntern, Forage, or company-specific programs.
+        For Courses/Certifications, use: Google, Microsoft, AWS, Cisco, Oracle, IBM, Coursera, Udemy, edX, LinkedIn Learning, Great Learning, Simplilearn.
+        
+        Return ONLY a JSON list of objects.
+        
+        If Category is 'Events and Activities', use this structure for each item:
+        {
+          "name": "Event Name",
+          "date": "Date & Time",
+          "location": "Venue, City",
+          "organizer": "Organizer Name",
+          "description": "Short engaging description",
+          "category": "Interest Category",
+          "image": "https://images.unsplash.com/photo-...",
+          "latitude": 0.0,
+          "longitude": 0.0,
+          "registration_info": "How to register...",
+          "contact": "Contact info..."
+        }
+
+        Otherwise, use this structure:
+        {
+          "title": "Title",
+          "company": "Company/Platform Name",
+          "location": "Location (Remote/City)",
+          "skills": ["Skill1", "Skill2"],
+          "description": "Short description",
+          "match": 85,
+          "link": "https://example.com/apply",
+          "latitude": 0.0,
+          "longitude": 0.0
+        }
+        
+        Important: Use realistic data. For images, use relevant Unsplash URLs (e.g., https://images.unsplash.com/photo-1531415074968-036ba1b575da for cricket).
+        Provide actual roles, real companies, and realistic CTC/Stipend based on market standards.
+      """;
+
+      final result = await _callAi(prompt);
+      if (result != null) {
+        final List<dynamic> decoded = json.decode(_stripMarkdown(result));
+        return List<Map<String, dynamic>>.from(decoded);
+      }
+    } catch (e) {
+      print("Error in getNearbyRecommendations: $e");
+    }
+    return [];
+  }
+
   String _stripMarkdown(String text) {
     return text.replaceAll('```json', '').replaceAll('```', '').trim();
   }
@@ -459,5 +544,11 @@ class MockAiService implements AiService {
       ],
       "closing_thought": "You have everything it takes to succeed as a $primaryInterest!"
     };
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category) async {
+    await Future.delayed(const Duration(seconds: 1));
+    return [];
   }
 }

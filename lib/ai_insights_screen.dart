@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'career_selection_screen.dart';
 import 'page_two_screen.dart';
+import 'nearby_you_screen.dart';
 import 'firebase_service.dart';
 import 'ai_service.dart';
 
@@ -157,6 +158,22 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const PageTwoScreen()),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildInsightCard(
+                    context,
+                    title: 'Nearby You',
+                    description: 'AI-generated jobs, internships, events, and more near your location.',
+                    icon: Icons.location_on,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E293B), Color(0xFF334155)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NearbyYouScreen()),
                     ),
                   ),
                 ],
@@ -381,12 +398,14 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
           children: [
             Icon(icon, color: color, size: 22),
             const SizedBox(width: 8),
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF1E293B),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
+                ),
               ),
             ),
           ],

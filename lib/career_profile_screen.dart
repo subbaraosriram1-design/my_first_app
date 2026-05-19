@@ -27,7 +27,6 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
   Map<String, List<String>> _labelDetails = {};
   List<dynamic> _projects = [];
   List<dynamic> _testScores = [];
-  List<String> _careerInterests = [];
   String? _activeCareerInterest;
   double _activeCareerProgress = 0.0;
   bool _isLoading = true;
@@ -139,7 +138,6 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
           _educationList = data['educationList'] ?? [];
           _projects = data['projects'] ?? data['experience'] ?? [];
           _testScores = data['testScores'] ?? [];
-          _careerInterests = userInterests;
           _activeCareerInterest = activeInterest;
           _activeCareerProgress = activeProgress;
           _profileImageBase64 = data['profileImage'];
@@ -448,7 +446,20 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
   }
 
   Widget _buildTestScoresList() {
-    return Column(children: _testScores.map((score) => Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(score['testName'] ?? '', style: GoogleFonts.poppins(fontWeight: FontWeight.w500)), Text(score['score'] ?? '', style: GoogleFonts.poppins(color: const Color(0xFF5B3FD8), fontWeight: FontWeight.bold))]))).toList());
+    return Column(
+      children: _testScores.map((score) => Container(
+        margin: const EdgeInsets.only(bottom: 8), 
+        padding: const EdgeInsets.all(12), 
+        decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)), 
+        child: Row(
+          children: [
+            Expanded(child: Text(score['testName'] ?? '', style: GoogleFonts.poppins(fontWeight: FontWeight.w500))), 
+            const SizedBox(width: 8),
+            Text(score['score'] ?? '', style: GoogleFonts.poppins(color: const Color(0xFF5B3FD8), fontWeight: FontWeight.bold))
+          ]
+        )
+      )).toList()
+    );
   }
 
   Widget _buildProjectsList() {
