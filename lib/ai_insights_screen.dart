@@ -469,15 +469,25 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
     required Color color,
     required bool isSmallScreen,
   }) {
+    final bool isStrength = color == const Color(0xFF10B981);
+    final Color bgColor = isStrength ? const Color(0xFFF0FDF4) : const Color(0xFFFFF7ED);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(
                 title,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
@@ -485,10 +495,10 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
                   color: const Color(0xFF1E293B),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         ...items.map((item) => _ExpandableAnalysisCard(item: item, color: color)),
       ],
     );
@@ -510,10 +520,13 @@ class _ExpandableAnalysisCardState extends State<_ExpandableAnalysisCard> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isStrength = widget.color == const Color(0xFF10B981);
+    final Color bgColor = isStrength ? const Color(0xFFF0FDF4) : const Color(0xFFFFF7ED);
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _isExpanded ? widget.color.withValues(alpha: 0.2) : Colors.grey.shade100, width: _isExpanded ? 1.5 : 1),
         boxShadow: [

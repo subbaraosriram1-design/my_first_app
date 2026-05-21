@@ -22,12 +22,57 @@ class _PersonalPlanDetailScreenState extends State<PersonalPlanDetailScreen> {
     _data = widget.roadmapData;
   }
 
+  Future<void> _moveToNextState() async {
+    final String currentStatus = _data['status'] ?? (_data['isCompleted'] == true ? 'Completed' : 'Active');
+    String? nextStatus;
+    String message = "";
+
+    if (currentStatus == 'Active') {
+      nextStatus = 'In Progress';
+      message = "Are you sure you want to move this goal to 'In Progress'?";
+    } else if (currentStatus == 'In Progress') {
+      nextStatus = 'Completed';
+      message = "Are you sure you want to mark this goal as 'Completed'?";
+    }
+
+    if (nextStatus == null) return;
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Move to $nextStatus?'),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Confirm', style: TextStyle(color: const Color(0xFF10B981)))
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      _data['status'] = nextStatus;
+      _data['isCompleted'] = (nextStatus == 'Completed');
+      _data['updatedAt'] = DateTime.now().toIso8601String();
+      
+      await FirebaseService.instance.savePersonalRoadmap(
+        FirebaseService.instance.currentUserId!, 
+        _data
+      );
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _toggleCompletion() async {
     setState(() => _isLoading = true);
     final userId = FirebaseService.instance.currentUserId!;
     final bool newState = !(_data['isCompleted'] ?? false);
     
     _data['isCompleted'] = newState;
+    _data['status'] = newState ? 'Completed' : 'Active';
     _data['updatedAt'] = DateTime.now().toIso8601String();
     
     await FirebaseService.instance.savePersonalRoadmap(userId, _data);
@@ -74,6 +119,8 @@ class _PersonalPlanDetailScreenState extends State<PersonalPlanDetailScreen> {
     final plan = _data['plan'] ?? {};
     final bool isCompleted = _data['isCompleted'] ?? false;
 
+    final String currentStatus = _data['status'] ?? (isCompleted ? 'Completed' : 'Active');
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -81,6 +128,11 @@ class _PersonalPlanDetailScreenState extends State<PersonalPlanDetailScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
+          if (currentStatus != 'Completed')
+            IconButton(
+              icon: const Icon(Icons.arrow_forward, color: Color(0xFF10B981)),
+              onPressed: _moveToNextState,
+            ),
           IconButton(
             icon: const Icon(Icons.edit_outlined, color: Color(0xFF10B981)),
             onPressed: () => Navigator.push(
@@ -101,7 +153,7 @@ class _PersonalPlanDetailScreenState extends State<PersonalPlanDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(isCompleted),
+                _buildHeader(currentStatus),
                 const SizedBox(height: 32),
                 _buildAnalysisSection(plan),
                 const SizedBox(height: 32),
@@ -116,19 +168,44 @@ class _PersonalPlanDetailScreenState extends State<PersonalPlanDetailScreen> {
     );
   }
 
-  Widget _buildHeader(bool isCompleted) {
+  Widget _buildHeader(String status) {
+    final bool isCompleted = status == 'Completed';
+    final bool isInProgress = status == 'In Progress';
+    
+    Color headerColor;
+    Color iconColor;
+    IconData iconData;
+    String statusTitle;
+
+    if (isCompleted) {
+      headerColor = const Color(0xFF10B981);
+      iconColor = const Color(0xFF10B981);
+      iconData = Icons.verified;
+      statusTitle = 'Goal Achieved!';
+    } else if (isInProgress) {
+      headerColor = const Color(0xFF3B82F6);
+      iconColor = const Color(0xFF3B82F6);
+      iconData = Icons.trending_up;
+      statusTitle = 'Plan In Progress';
+    } else {
+      headerColor = Colors.grey.shade200;
+      iconColor = Colors.orange;
+      iconData = Icons.lightbulb_outline;
+      statusTitle = 'Plan Active';
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isCompleted ? const Color(0xFF10B981).withValues(alpha: 0.1) : Colors.grey.shade50,
+        color: iconColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isCompleted ? const Color(0xFF10B981) : Colors.grey.shade200),
+        border: Border.all(color: iconColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
-            isCompleted ? Icons.verified : Icons.lightbulb_outline, 
-            color: isCompleted ? const Color(0xFF10B981) : Colors.orange,
+            iconData, 
+            color: iconColor,
             size: 32,
           ),
           const SizedBox(width: 16),
@@ -137,7 +214,7 @@ class _PersonalPlanDetailScreenState extends State<PersonalPlanDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isCompleted ? 'Goal Achieved!' : 'Plan in Progress',
+                  statusTitle,
                   style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(

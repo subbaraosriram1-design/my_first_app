@@ -8,6 +8,8 @@ import 'ai_insights_screen.dart';
 import 'roadmap_choice_screen.dart';
 import 'reminders_screen.dart';
 import 'events_provider.dart';
+import 'career_hub_screen.dart';
+import 'nearby_you_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,8 +90,8 @@ class _MyHomePageState extends State<MyHomePage> {
       const CareerProfileScreen(), // The new profile/home screen
       const RoadmapChoiceScreen(),
       const RemindersScreen(),
-      const Center(child: Text('Chat Screen')),
-      const AiInsightsScreen(),
+      const NearbyYouScreen(),
+      const CareerHubScreen(),
     ];
 
     return Scaffold(
@@ -128,14 +130,14 @@ class _MyHomePageState extends State<MyHomePage> {
               label: 'Reminders',
             ),
             NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline, color: _selectedIndex == 3 ? const Color(0xFF5B3FD8) : Colors.grey),
-              selectedIcon: const Icon(Icons.chat_bubble, color: Color(0xFF5B3FD8)),
-              label: 'Chat',
+              icon: Icon(Icons.location_on_outlined, color: _selectedIndex == 3 ? const Color(0xFF5B3FD8) : Colors.grey),
+              selectedIcon: const Icon(Icons.location_on, color: Color(0xFF5B3FD8)),
+              label: 'Nearby',
             ),
             NavigationDestination(
               icon: Icon(Icons.lightbulb_outline, color: _selectedIndex == 4 ? const Color(0xFF5B3FD8) : Colors.grey),
               selectedIcon: const Icon(Icons.lightbulb, color: Color(0xFF5B3FD8)),
-              label: 'AI Insights',
+              label: 'Career Hub',
             ),
           ],
         ),

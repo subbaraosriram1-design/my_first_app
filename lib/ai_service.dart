@@ -13,8 +13,10 @@ abstract class AiService {
   Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext);
   Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest);
   Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category);
-  Future<List<Map<String, dynamic>>> generatePersonalPlan(String title, String description, List<String> currentSkills);
+  Future<Map<String, dynamic>> generatePersonalPlan(String title, String description, List<String> currentSkills, {DateTime? targetCompletionDate});
   Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest);
+  Future<String> getPersonalGuidance(String goal, String prompt, Map<String, dynamic> userData);
+  Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData);
 }
 
 /// Implementation using Groq
@@ -114,174 +116,39 @@ class GroqAiService implements AiService {
   @override
   Future<String> generateSummary(Map<String, dynamic> userData) async {
     try {
-      // Extracting all available profile information for a comprehensive summary
-      final String name = userData['fullName'] ?? 'The candidate';
-      final String tagline = userData['tagline'] ?? '';
-      
-      final List<dynamic> skillsRaw = userData['skills'] ?? [];
-      final String skills = skillsRaw.join(", ");
-      
-      final List<dynamic> otherInterestsRaw = userData['otherInterests'] ?? [];
-      final String otherInterests = otherInterestsRaw.join(", ");
-      
-      final List<dynamic> careerInterestsRaw = userData['careerInterests'] ?? [];
-      final String careerInterests = careerInterestsRaw.join(", ");
-
-      final String gpa = "Weighted GPA: ${userData['weightedGpa'] ?? 'N/A'}, Unweighted GPA: ${userData['unweightedGpa'] ?? 'N/A'}";
-      final String scores = "SAT: ${userData['satScoreRange'] ?? 'N/A'}, ACT: ${userData['actScoreRange'] ?? 'N/A'}";
-
-      // Process Education
-      final List<dynamic> eduRaw = userData['educationList'] ?? [];
-      final String education = eduRaw.map((e) => "${e['level']} student at ${e['school']} (Class of ${e['classOf']})").join("; ");
-
-      // Process Projects
-      final List<dynamic> projectsRaw = userData['projects'] ?? [];
-      final String projects = projectsRaw.map((p) => "${p['title']}: ${p['description']}").join(". ");
-
-      // Process Certifications
-      final List<dynamic> certsRaw = userData['certifications'] ?? [];
-      final String certs = certsRaw.map((c) => "${c['name']} (${c['level']})").join(", ");
-
-      // Process Goals & Activity Preferences
-      final Map<String, dynamic> goalsData = userData['goals'] ?? {};
-      final String motivations = List<String>.from(goalsData['extracurricularMotivations'] ?? []).join(", ");
-      final String targetLevel = goalsData['targetAchievementLevel'] ?? 'N/A';
-      final bool leadership = goalsData['interestedInLeadership'] ?? false;
-      final bool research = goalsData['interestedInResearch'] ?? false;
-
-      final Map<String, dynamic> activityPrefs = userData['activityPreferences'] ?? {};
-      final String selectiveness = activityPrefs['opportunitySelectiveness'] ?? 'flexible';
-
-      // Constructing the detailed prompt
-      final String detailedContext = """
-        User Profile Data:
-        - Candidate Name: $name
-        - Professional Tagline: $tagline
-        - Core Technical/Soft Skills: $skills
-        - Broader Interests/Hobbies: $otherInterests
-        - Target Career Paths: $careerInterests
-        - Academic Performance: $gpa, $scores
-        - Education Track: $education
-        - Significant Projects: $projects
-        - Professional Certifications: $certs
-        - Strategic Motivations: $motivations
-        - Ambition Level: $targetLevel
-        - Leadership Interest: ${leadership ? 'High' : 'Standard'}
-        - Research Interest: ${research ? 'High' : 'Standard'}
-        - Work Environment Preference: $selectiveness opportunities
-      """;
+      final name = userData['fullName'] ?? 'The candidate';
+      final tagline = userData['tagline'] ?? '';
+      final skills = (userData['skills'] as List?)?.join(", ") ?? '';
+      final careerInterests = (userData['careerInterests'] as List?)?.join(", ") ?? '';
 
       final prompt = """
-        Act as a Senior Executive Career Consultant. Write a high-impact, sophisticated, and deeply professional personal summary for the student whose data is provided below.
-        
-        $detailedContext
-        
-        Guidelines for the Summary:
-        1. Tone: Authoritative, polished, and forward-looking. Use strong action verbs (e.g., "Spearheaded," "Adeptly," "Leveraging").
-        2. Content: 
-           - Start with a powerful hook that identifies the student's unique value proposition.
-           - Bridge their academic excellence (GPA/SAT) with their practical technical skills ($skills).
-           - Explicitly highlight their project experience (like the AI Resume Builder) as tangible evidence of their innovative problem-solving.
-           - Mention their interest in $careerInterests as a clearly defined career trajectory.
-           - Incorporate their interest in ${leadership ? 'leadership' : 'collaborative'} and ${research ? 'research-driven' : 'hands-on'} environments.
-        3. Structure: One cohesive, high-quality paragraph (approx. 120-150 words).
-        4. Perspective: Third person (use "$name" or "This candidate").
-        
-        IMPORTANT: Return ONLY the plain text. No JSON, no markdown, no quotes, no conversational filler.
+        User Profile: $name, $tagline. Skills: $skills. Career Interests: $careerInterests.
+        Write a high-impact, professional personal summary for a student.
+        Return ONLY the plain text. No JSON, no markdown.
       """;
 
       final result = await _callAi(prompt);
-      
-      if (result != null) {
-        String cleanResult = result.trim();
-        // Safety check to strip common AI "chatter" or JSON formatting
-        if (cleanResult.startsWith('{') || cleanResult.startsWith('```')) {
-          cleanResult = _stripMarkdown(cleanResult);
-          if (cleanResult.startsWith('{')) {
-             try {
-              final Map<String, dynamic> decoded = json.decode(cleanResult);
-              return decoded['summary'] ?? decoded.values.first.toString();
-            } catch (e) {
-              cleanResult = cleanResult.replaceAll('{', '').replaceAll('}', '').replaceAll('"', '').trim();
-            }
-          }
-        }
-        return cleanResult;
-      }
-      return 'Error generating summary.';
+      return result?.trim() ?? 'Error generating summary.';
     } catch (e) {
-      return "AI API Error: $e. Please check your API configuration.";
+      return "AI API Error: $e";
     }
   }
 
   @override
   Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer) async {
     try {
-      final String weeklyCommitment = userData['activityPreferences']?['weeklyTimeCommitment'] ?? '1hr default';
-      final String targetAchievement = userData['goals']?['targetAchievementLevel'] ?? 'Job';
-      
-      // Determine number of skills based on target achievement
-      int skillCount = 15;
-      if (targetAchievement.toLowerCase().contains('job') || targetAchievement.toLowerCase().contains('elite')) {
-        skillCount = 25;
-      } else if (targetAchievement.toLowerCase().contains('abroad') || targetAchievement.toLowerCase().contains('international')) {
-        skillCount = 20;
-      }
-
       final prompt = """
         User Profile: ${jsonEncode(userData)}
         Target Career: $targetCareer
-        Weekly Time Commitment: $weeklyCommitment
-        Target Achievement Level: $targetAchievement
-
-        Act as an expert career advisor. Analyze the user's projects, skills, and certifications.
-        
-        CRITICAL GUIDELINES:
-        1. Be EXTREMELY polite, positive, and encouraging.
-        2. Specifically PRAISE the user for their existing certifications and projects.
-        3. For the skills list, provide EXACTLY $skillCount skills relevant to $targetCareer.
-        4. RELEVANCE CHECK: Only suggest skills that are actually needed for $targetCareer. If a user has a certification in an unrelated area (e.g., C for Web Development), do not force its inclusion in the roadmap unless it's genuinely useful as a foundation.
-        5. PROFILE MATCHING: If a suggested skill is ALREADY in the user's "skills" list (${userData['skills']}), mark "already_in_profile": true.
-        6. EXCLUSION RULE: If the user ALREADY has an "Advanced" certification or significant project experience in a suggested skill, DO NOT show an "Add to Roadmap" button for it in the final output (mark "already_mastered": true).
-        7. For EACH skill, provide a "justification" explaining why it's crucial for this specific career path.
-        8. Return ONLY a valid JSON object.
-        
-        JSON Structure:
-        {
-          "achievements": "Summary...",
-          "gap_analysis": "Next steps...",
-          "steps": [{"title": "Step title", "duration": "Duration"}],
-          "timeline": "Total weeks",
-          "industry_news": [
-            {
-              "title": "Brand New Tool/Tech Name",
-              "impact": "Explain exactly what is new and why it is a game-changer...",
-              "date": "Trending Now"
-            }
-          ],
-          "required_skills": [
-            {
-              "name": "Skill Name",
-              "justification": "Why this skill is important...",
-              "already_mastered": false,
-              "already_in_profile": false,
-              "user_status": "Status update..."
-            }
-          ]
-        }
-
-        AI INSTRUCTIONS FOR NEWS:
-        Focus exclusively on 'The Cutting Edge':
-        - What brand new libraries, frameworks, or tools were released in the last few months?
-        - What emerging technologies (like new AI models or hardware) are currently disrupting this career?
-        - Avoid general career advice or generic industry updates.
-        - Give the user a 'First Look' at the absolute latest innovations they need to know about.
+        Act as an expert advisor. Return a JSON object with:
+        "achievements": "Summary...", "gap_analysis": "Next steps...", 
+        "steps": [{"title": "Step", "duration": "Time"}], "timeline": "Total",
+        "industry_news": [{"title": "News", "impact": "Impact", "date": "Now"}],
+        "required_skills": [{"name": "Skill", "justification": "Why", "already_mastered": false, "already_in_profile": false}]
       """;
 
       final result = await _callAi(prompt);
-      if (result != null) {
-        return json.decode(_stripMarkdown(result));
-      }
+      if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
       print("Error in getDetailedCareerPlan: $e");
     }
@@ -291,30 +158,9 @@ class GroqAiService implements AiService {
   @override
   Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext) async {
     try {
-      final prompt = """
-        Skill: $skill
-        Career Context: $careerContext
-
-        Provide a comprehensive list of learning resources for this skill at three levels: Basic, Intermediate, and Advanced.
-        Provide at least 5-10 high-quality links for each level where possible.
-        
-        Return ONLY a raw JSON object with:
-        "description": Brief overview of the skill.
-        "levels": {
-          "Basic": {
-            "trainings": [{"title": "Course Name", "link": "url"}],
-            "youtube": [{"title": "Video Name", "link": "url"}],
-            "docs": [{"title": "Documentation Name", "link": "url"}]
-          },
-          "Intermediate": { ... },
-          "Advanced": { ... }
-        }
-      """;
-
+      final prompt = "Provide learning resources for $skill in $careerContext context. Return JSON.";
       final result = await _callAi(prompt);
-      if (result != null) {
-        return json.decode(_stripMarkdown(result));
-      }
+      if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
       print("Error in getSkillResources: $e");
     }
@@ -324,39 +170,9 @@ class GroqAiService implements AiService {
   @override
   Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest) async {
     try {
-      final prompt = """
-        User Profile: ${jsonEncode(userData)}
-        Primary Career Interest: $primaryInterest
-
-        Act as a supportive and motivating career coach. Analyze the user's current profile in the context of their goal to become a $primaryInterest.
-
-        CRITICAL GUIDELINES:
-        1. Be EXTREMELY positive, encouraging, and inspiring.
-        2. SKILL GAP ANALYSIS: 
-           - Look at userData['skills'] and userData['resourceProgress'].
-           - Identify which skills they have already MASTERED or are currently in their profile.
-           - Identify which skills they need to IMPROVE or ACQUIRE for $primaryInterest.
-        3. Frame "Weaknesses" as "Exciting Growth Milestones" or "Areas to Shine". Never use negative language.
-        4. Identify 3-4 "Strengths" where the user is already doing great based on their profile skills.
-        5. Identify 3-4 "Areas to Shine" that represent the next steps in their roadmap.
-        6. Return ONLY a valid JSON object.
-
-        JSON Structure:
-        {
-          "strengths": [
-            {"title": "Skill/Area Name", "description": "Explain how their existing skill in this area gives them a head start..."}
-          ],
-          "opportunities": [
-            {"title": "Target Skill", "description": "Encouraging explanation of how mastering this specific skill from their roadmap will complete their profile..."}
-          ],
-          "closing_thought": "A final motivating sentence personalized to $primaryInterest."
-        }
-      """;
-
+      final prompt = "Analyze user profile for $primaryInterest. Return JSON with 'strengths' and 'opportunities' lists.";
       final result = await _callAi(prompt);
-      if (result != null) {
-        return json.decode(_stripMarkdown(result));
-      }
+      if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
       print("Error in getCareerAnalysis: $e");
     }
@@ -366,76 +182,7 @@ class GroqAiService implements AiService {
   @override
   Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category) async {
     try {
-      String contextPrompt = "";
-      String locationContext = "";
-      
-      if (userData.containsKey('current_lat') && userData.containsKey('current_lng')) {
-        locationContext = "The user is located at latitude: ${userData['current_lat']}, longitude: ${userData['current_lng']}. Prioritize recommendations within 300km.";
-      }
-
-      if (category == 'Events and Activities') {
-        contextPrompt = """
-        User Interests: ${userData['hobbies'] ?? []}
-        User Goals: ${userData['goals'] ?? {}}
-        
-        Strict Guidelines for Events and Activities:
-        1. Recommendations must ONLY depend on the user's selected interests (hobbies) and goals.
-        2. If interest is 'Cricket', find: Turfs, Grounds, Coaching camps, Local matches, Events, Practice sessions.
-        3. If interest is 'Coding', find: Hackathons, meetups, workshops, bootcamps.
-        4. If interest is 'Gaming', find: Esports, cafes, tournaments, LAN events.
-        5. If interest is 'Chess', find: Tournaments, clubs, coaching.
-        6. Integrate data logic from: Playo, KheloMore, Meetup, BookMyShow, Eventbrite.
-        7. MANDATORY: For every event, provide a REALISTIC 'image' URL from Unsplash or similar service related to the specific activity (e.g., cricket turf image for cricket events). Do not leave image null.
-        """;
-      } else {
-        contextPrompt = "Based on career interests: ${userData['careerInterests'] ?? []}, skills: ${userData['skills'] ?? []}, and projects: ${userData['projects'] ?? []}. Profile: Age: ${userData['age']}, Gender: ${userData['gender']}.";
-      }
-
-      final prompt = """
-        User Profile Summary: $contextPrompt
-        $locationContext
-        Category: $category
-
-        Act as a career guidance AI. Generate 5 realistic, personalized recommendations for $category.
-        
-        For Jobs, use: LinkedIn, Naukri, Indeed, Foundit, Glassdoor, Cutshort, Wellfound, HackerRank, Hired, or Government portals like NCS, SSC, UPSC.
-        For Internships, use: Internshala, LetsIntern, HelloIntern, Forage, or company-specific programs.
-        For Courses/Certifications, use: Google, Microsoft, AWS, Cisco, Oracle, IBM, Coursera, Udemy, edX, LinkedIn Learning, Great Learning, Simplilearn.
-        
-        Return ONLY a JSON list of objects.
-        
-        If Category is 'Events and Activities', use this structure for each item:
-        {
-          "name": "Event Name",
-          "date": "Date & Time",
-          "location": "Venue, City",
-          "organizer": "Organizer Name",
-          "description": "Short engaging description",
-          "category": "Interest Category",
-          "image": "https://images.unsplash.com/photo-...",
-          "latitude": 0.0,
-          "longitude": 0.0,
-          "registration_info": "How to register...",
-          "contact": "Contact info..."
-        }
-
-        Otherwise, use this structure:
-        {
-          "title": "Title",
-          "company": "Company/Platform Name",
-          "location": "Location (Remote/City)",
-          "skills": ["Skill1", "Skill2"],
-          "description": "Short description",
-          "match": 85,
-          "link": "https://example.com/apply",
-          "latitude": 0.0,
-          "longitude": 0.0
-        }
-        
-        Important: Use realistic data. For images, use relevant Unsplash URLs (e.g., https://images.unsplash.com/photo-1531415074968-036ba1b575da for cricket).
-        Provide actual roles, real companies, and realistic CTC/Stipend based on market standards.
-      """;
-
+      final prompt = "Generate 5 recommendations for $category based on user profile. Return JSON list.";
       final result = await _callAi(prompt);
       if (result != null) {
         final List<dynamic> decoded = json.decode(_stripMarkdown(result));
@@ -448,23 +195,15 @@ class GroqAiService implements AiService {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> generatePersonalPlan(String title, String description, List<String> currentSkills) async {
+  Future<Map<String, dynamic>> generatePersonalPlan(String title, String description, List<String> currentSkills, {DateTime? targetCompletionDate}) async {
     try {
+      String dateContext = targetCompletionDate != null ? "Target date: ${targetCompletionDate.toIso8601String()}" : "";
       final prompt = """
-        Goal: $title
-        Description: $description
-        Current Skills: ${currentSkills.join(", ")}
-
-        Generate a 5-step personal development plan to achieve this goal.
-        Return ONLY a raw JSON list of objects with "title" and "description" for each step.
-        Do not include markdown code blocks or additional text.
+        Goal: $title, Desc: $description, Skills: ${currentSkills.join(", ")}. $dateContext
+        Return JSON: {"strengths": "", "negatives": "", "steps": [{"title": "", "description": ""}], "references": [{"title": "", "link": ""}]}
       """;
-      
       final result = await _callAi(prompt);
-      if (result != null) {
-        final List<dynamic> decoded = json.decode(_stripMarkdown(result));
-        return List<Map<String, dynamic>>.from(decoded);
-      }
+      if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
       print("Error in generatePersonalPlan: $e");
     }
@@ -474,25 +213,41 @@ class GroqAiService implements AiService {
   @override
   Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest) async {
     try {
-      final prompt = """
-        Skill: $skill
-        Career Interest: $careerInterest
-        
-        Analyze if this skill is relevant to this career.
-        Return ONLY a raw JSON object with:
-        "is_relevant": true/false,
-        "connection_type": "Direct" or "Transferable" or "Indirect",
-        "explanation": "Short 1-sentence explanation".
-        Do not include markdown code blocks or additional text.
-      """;
+      final prompt = "Analyze relevance of $skill for $careerInterest. Return JSON with 'is_relevant', 'connection_type', 'explanation'.";
       final result = await _callAi(prompt);
-      if (result != null) {
-        return json.decode(_stripMarkdown(result));
-      }
+      if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
       print("Error in validateSkillRelevance: $e");
     }
     return MockAiService().validateSkillRelevance(skill, careerInterest);
+  }
+
+  @override
+  Future<String> getPersonalGuidance(String goal, String prompt, Map<String, dynamic> userData) async {
+    try {
+      final result = await _callAi("Topic: $goal. Query: $prompt. Profile: ${jsonEncode(userData)}");
+      return result ?? "No guidance available.";
+    } catch (e) {
+      print("Error in getPersonalGuidance: $e");
+      return "Error fetching guidance.";
+    }
+  }
+
+  @override
+  Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData) async {
+    try {
+      final String fullPrompt = """
+        User Query: $userMessage
+        Profile: ${jsonEncode(userData)}
+        Act as Expert Admissions/Career Consultant. Restricted to: 1. College Admission 2. Skill Acquisition.
+        Analyze profile meticulously. If outside topics, redirect.
+      """;
+      final result = await _callAi(fullPrompt);
+      return result ?? "I'm sorry, I couldn't process your request.";
+    } catch (e) {
+      print("Error in getChatResponse: $e");
+      return "An error occurred.";
+    }
   }
 
   String _stripMarkdown(String text) {
@@ -503,119 +258,56 @@ class GroqAiService implements AiService {
 class MockAiService implements AiService {
   @override
   Future<Map<String, dynamic>> getNextSteps(List<String> skills, List<String> interests) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return {
-      'suggestion': 'Focus on building a portfolio in your interest areas.',
-      'course': 'Advanced Data structures & Algorithms',
-      'project': 'AI-powered Personal Finance Tracker'
-    };
+    return {'suggestion': 'Portfolio focus', 'course': 'DSA', 'project': 'Finance Tracker'};
   }
 
   @override
   Future<List<Map<String, String>>> getCareerTrajectory(List<String> skills) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return [
-      {'stage': 'Early Career', 'role': 'Junior Software Engineer'},
-      {'stage': 'Mid-Level', 'role': 'Senior Full Stack Developer'},
-      {'stage': 'Senior Level', 'role': 'Solutions Architect'},
-    ];
+    return [{'stage': 'Early', 'role': 'Junior Dev'}, {'stage': 'Mid', 'role': 'Senior Dev'}];
   }
 
   @override
   Future<String> generateSummary(Map<String, dynamic> userData) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return 'Ambitious student with a strong focus on technical growth and community contribution.';
+    return 'Ambitious student.';
   }
 
   @override
   Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return {
-      "achievements": "You have a fantastic foundation! It's wonderful that you've already explored several projects. Your dedication is truly inspiring!",
-      "gap_analysis": "To reach your goal of being a $targetCareer, we have some exciting new skills to dive into together!",
-      "industry_news": [
-        {
-          "title": "Rise of Generative AI",
-          "impact": "New opportunities for developers to integrate AI into existing workflows.",
-          "date": "Trending"
-        },
-        {
-          "title": "Remote Work Standards",
-          "impact": "Global companies are formalizing long-term hybrid structures.",
-          "date": "Recent"
-        }
-      ],
-      "steps": [
-        {"title": "Complete specialized certification", "duration": "2 weeks"},
-        {"title": "Build a portfolio project", "duration": "3 weeks"}
-      ],
-      "timeline": "5 weeks",
-      "required_skills": [
-        {
-          "name": "Flutter",
-          "justification": "Leading framework for cross-platform apps.",
-          "already_mastered": false,
-          "already_in_profile": false,
-          "user_status": ""
-        },
-        {
-          "name": "Problem Solving",
-          "justification": "Essential for any high-level career.",
-          "already_mastered": true,
-          "already_in_profile": true,
-          "user_status": "Your work on previous projects shows you're a natural!"
-        }
-      ]
-    };
+    return {"achievements": "Solid foundation!", "steps": [], "timeline": "5 weeks", "required_skills": []};
   }
 
   @override
   Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return {
-      "description": "Mastering $skill is a brilliant move for your journey towards becoming a $careerContext!",
-      "trainings": [{"title": "$skill Mastery Course", "link": "https://udemy.com"}],
-      "youtube": [{"title": "$skill Explained simply", "link": "https://youtube.com"}],
-      "docs": [{"title": "Official $skill Documentation", "link": "https://docs.com"}]
-    };
+    return {"description": "Mastering $skill", "trainings": [], "youtube": [], "docs": []};
   }
 
   @override
   Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return {
-      "strengths": [
-        {"title": "Foundational Knowledge", "description": "You have a solid start in your journey!"},
-        {"title": "Dedication", "description": "Your commitment to learning is truly inspiring!"}
-      ],
-      "opportunities": [
-        {"title": "Practical Projects", "description": "Building more things will make you shine even brighter!"},
-        {"title": "Networking", "description": "Connecting with others will open up amazing new doors!"}
-      ],
-      "closing_thought": "You have everything it takes to succeed as a $primaryInterest!"
-    };
+    return {"strengths": [], "opportunities": [], "closing_thought": "Success awaits!"};
   }
 
   @override
   Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category) async {
-    await Future.delayed(const Duration(seconds: 1));
     return [];
   }
 
   @override
-  Future<List<Map<String, dynamic>>> generatePersonalPlan(String title, String description, List<String> currentSkills) async {
-    return [
-      {'title': 'Research Foundation', 'description': 'Understand the core concepts of $title.'},
-      {'title': 'Hands-on Practice', 'description': 'Apply $description through a small project.'},
-    ];
+  Future<Map<String, dynamic>> generatePersonalPlan(String title, String description, List<String> currentSkills, {DateTime? targetCompletionDate}) async {
+    return {"strengths": "Foundation", "negatives": "Time", "steps": [], "references": []};
   }
 
   @override
   Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest) async {
-    return {
-      'is_relevant': true,
-      'connection_type': 'Direct',
-      'explanation': 'This skill is highly relevant to your chosen career path.'
-    };
+    return {'is_relevant': true, 'connection_type': 'Direct', 'explanation': 'Highly relevant.'};
+  }
+
+  @override
+  Future<String> getPersonalGuidance(String goal, String prompt, Map<String, dynamic> userData) async {
+    return "Focus on practice.";
+  }
+
+  @override
+  Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData) async {
+    return "Explore certifications.";
   }
 }
