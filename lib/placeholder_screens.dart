@@ -5,6 +5,7 @@ import 'firebase_service.dart';
 import 'ai_insights_screen.dart';
 import 'notification_service.dart';
 import 'reminder_detail_screen.dart';
+import 'college_suggestions_screen.dart';
 
 class PlaceholderPage extends StatelessWidget {
   final String title;
@@ -622,6 +623,7 @@ class _MenuPageState extends State<MenuPage> {
                   _buildMenuItem(Icons.settings_outlined, 'Account settings'),
                   _buildMenuItem(Icons.people_outline, 'Manage roles'),
                   _buildMenuItem(Icons.smart_toy_outlined, 'AI Insights'),
+                  _buildMenuItem(Icons.school_outlined, 'Suggestions'),
                   _buildMenuItem(Icons.mail_outline, 'Invite friends & earn'),
                   _buildMenuItem(Icons.verified_user_outlined, 'Privacy policy'),
                   _buildMenuItem(Icons.info_outline, 'About spikeview'),
@@ -669,6 +671,11 @@ class _MenuPageState extends State<MenuPage> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AiInsightsScreen()),
+            );
+          } else if (title == 'Suggestions') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CollegeSuggestionsScreen()),
             );
           } else {
             // Placeholder for other menu items

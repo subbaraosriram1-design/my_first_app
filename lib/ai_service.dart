@@ -17,6 +17,8 @@ abstract class AiService {
   Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest);
   Future<String> getPersonalGuidance(String goal, String prompt, Map<String, dynamic> userData);
   Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData);
+  Future<Map<String, dynamic>> getCollegeSuggestions(Map<String, dynamic> userData);
+  Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName);
 }
 
 /// Implementation using Groq
@@ -250,6 +252,63 @@ class GroqAiService implements AiService {
     }
   }
 
+  @override
+  Future<Map<String, dynamic>> getCollegeSuggestions(Map<String, dynamic> userData) async {
+    try {
+      final prompt = """
+        User Profile: ${jsonEncode(userData)}
+        
+        Provide an EXTREMELY detailed analysis of the user's profile based on Top 50-60 US College admission standards.
+        Return a JSON object with:
+        1. "strengths": A list of objects with "title" and "detailed_explanation" (explain WHY this is a strength for Top 50-60 schools).
+        2. "weaknesses": A list of objects with "title" and "detailed_explanation" (explain the impact of this gap and how it hurts Top 50-60 chances).
+        3. "suggestions": A list of 5 suitable US colleges with "name", "location", "match_reason", "how_to_achieve", "suitable_courses", and "match_percentage".
+        4. "top_60_roadmap": A list of 5-6 very specific, granular milestones needed to be competitive for Top 50-60 ranked institutions (e.g., specific GPA targets, extracurricular depth, and testing strategy).
+
+        Return ONLY a raw JSON object. Do not include markdown code blocks or additional text.
+      """;
+
+      final result = await _callAi(prompt);
+      if (result != null) {
+        return json.decode(_stripMarkdown(result));
+      }
+    } catch (e) {
+      print("Error in getCollegeSuggestions: $e");
+    }
+    return MockAiService().getCollegeSuggestions(userData);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName) async {
+    try {
+      final prompt = """
+        User Profile: ${jsonEncode(userData)}
+        College: $collegeName
+        Provide an exhaustive, multi-dimensional admission blueprint for $collegeName. 
+        Meticulously reference the Common Data Set (CDS) for $collegeName.
+        Return a JSON object with:
+        - "name": $collegeName
+        - "match_analysis": A deep, paragraph-length analysis of how their profile fits this specific institution.
+        - "academic_strategy": Specific advice on course rigor, weighted vs unweighted GPA priorities, and standardized testing timing.
+        - "action_plan": A comprehensive, step-by-step roadmap for the next 12-24 months.
+        - "chances": (Reach/Match/Safety).
+        - "holistic_narrative": How the user should position their unique "hook" or personal story in their application to this college.
+        - "suggested_extracurriculars": High-impact activities that specifically align with this college's values.
+        - "cds_insight": A critical data point from the most recent CDS.
+        
+        Return ONLY a raw JSON object. Do not include markdown code blocks or additional text.
+      """;
+
+      final result = await _callAi(prompt);
+      if (result != null) {
+        return json.decode(_stripMarkdown(result));
+      }
+    } catch (e) {
+      print("Error in getSpecificCollegeAdvice: $e");
+    }
+    return MockAiService().getSpecificCollegeAdvice(userData, collegeName);
+  }
+
   String _stripMarkdown(String text) {
     return text.replaceAll('```json', '').replaceAll('```', '').trim();
   }
@@ -309,5 +368,62 @@ class MockAiService implements AiService {
   @override
   Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData) async {
     return "Explore certifications.";
+  }
+
+  @override
+  Future<Map<String, dynamic>> getCollegeSuggestions(Map<String, dynamic> userData) async {
+    return {
+      "strengths": [
+        {
+          "title": "Strong weighted GPA (4.2)",
+          "detailed_explanation": "A 4.2 weighted GPA places you in the top decile for many Top 50 schools. In the CDS Section C9, academic rigor and GPA are consistently rated as 'Very Important', making this your primary competitive anchor."
+        },
+        {
+          "title": "STEM Extracurricular Depth",
+          "detailed_explanation": "Your consistent involvement in AI and CS projects demonstrates 'Talent/Ability', a key holistic factor in CDS C7. This proves you have more than just grades; you have applied skills that Top 60 schools value for their incoming class diversity."
+        }
+      ],
+      "weaknesses": [
+        {
+          "title": "Lack of National-Level Awards",
+          "detailed_explanation": "While your local projects are strong, Top 50 colleges look for external validation. Without national awards (like AP Scholar with Distinction or Science Fair state wins), it's harder to stand out in the 'Exceptional Talent' category."
+        },
+        {
+          "title": "Unweighted GPA Discrepancy",
+          "detailed_explanation": "A significant gap between weighted and unweighted GPA can signal to admissions that you are excelling in APs but might have struggled in foundational courses. Schools like those in the Top 60 prioritize consistent high performance across all subjects."
+        }
+      ],
+      "suggestions": [
+        {
+          "name": "Stanford University",
+          "location": "Stanford, CA",
+          "match_reason": "Stanford values high academic rigor and intellectual vitality. Your 4.2 GPA and AI focus align perfectly with their 'Very Important' criteria in CDS C7.",
+          "how_to_achieve": "Maintain your GPA, lead an AI club, and aim for a 1560+ SAT to match their 75th percentile benchmarks.",
+          "suitable_courses": ["Computer Science", "Artificial Intelligence", "Symbolic Systems"],
+          "match_percentage": 95
+        }
+      ],
+      "top_60_roadmap": [
+        "Reach and maintain a 4.0 unweighted GPA in your junior year.",
+        "Secure at least two leadership positions in major school organizations.",
+        "Enter and place in a state or national-level competition relevant to your major.",
+        "Complete 100+ hours of community service with a clear leadership impact.",
+        "Achieve an SAT score of 1500+ or ACT of 34+ to be above the 50th percentile for Top 60 schools."
+      ]
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName) async {
+    return {
+      "name": collegeName,
+      "match_analysis": "Your profile shows significant potential for $collegeName. Your academic record is strong, and your specific interest in AI aligns with their current research priorities. However, $collegeName is highly selective, and you will need to differentiate yourself through your personal narrative.",
+      "academic_strategy": "Prioritize AP Calculus BC and AP Physics to demonstrate maximum rigor. Aim for a 'Straight A' record in these specific subjects as they are highly weighted in $collegeName's CDS C9 section.",
+      "action_plan": "1. Focus on a capstone AI project over the next 6 months. 2. Prepare for the August SAT to hit the 1550+ mark. 3. Secure a summer internship or research assistant position.",
+      "chances": "Reach",
+      "holistic_narrative": "Focus your application on the intersection of ethics and AI. Position yourself as a future leader who doesn't just build technology but understands its societal impact—a narrative that resonates deeply with $collegeName's mission.",
+      "suggested_extracurriculars": ["Math Olympiad", "Student Council", "Volunteering at Tech Centers"],
+      "cds_insight": "Extracurricular activities and character are rated 'Very Important' in their Basis for Selection (CDS C7)."
+    };
   }
 }

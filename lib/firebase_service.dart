@@ -171,4 +171,52 @@ class FirebaseService {
       debugPrint('Firestore DeletePersonalRoadmap Error: $e');
     }
   }
+
+  // Saved Colleges
+  Future<void> saveCollege(String userId, Map<String, dynamic> college) async {
+    try {
+      final docRef = _firestore.collection('resumes').doc(userId);
+      final doc = await docRef.get();
+      List<dynamic> savedColleges = [];
+      if (doc.exists) {
+        savedColleges = List<dynamic>.from(doc.data()?['savedColleges'] ?? []);
+      }
+      
+      // Prevent duplicates by name
+      savedColleges.removeWhere((c) => c['name'] == college['name']);
+      savedColleges.add(college);
+      
+      await docRef.update({'savedColleges': savedColleges});
+    } catch (e) {
+      debugPrint('Firestore SaveCollege Error: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getSavedColleges(String userId) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('resumes').doc(userId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return List<Map<String, dynamic>>.from(data['savedColleges'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Firestore GetSavedColleges Error: $e');
+      return [];
+    }
+  }
+
+  Future<void> removeSavedCollege(String userId, String collegeName) async {
+    try {
+      final docRef = _firestore.collection('resumes').doc(userId);
+      final doc = await docRef.get();
+      if (doc.exists) {
+        List<dynamic> savedColleges = List<dynamic>.from(doc.data()?['savedColleges'] ?? []);
+        savedColleges.removeWhere((c) => c['name'] == collegeName);
+        await docRef.update({'savedColleges': savedColleges});
+      }
+    } catch (e) {
+      debugPrint('Firestore RemoveSavedCollege Error: $e');
+    }
+  }
 }
