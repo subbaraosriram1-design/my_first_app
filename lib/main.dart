@@ -15,9 +15,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
+    debugPrint('Initializing Firebase...');
     await Firebase.initializeApp();
-  } catch (e) {
+    debugPrint('Firebase initialized successfully');
+  } catch (e, stackTrace) {
     debugPrint('Firebase initialization failed: $e');
+    debugPrint('Stack trace: $stackTrace');
+    // On some platforms, you might need to provide options manually if the default config isn't found
+    debugPrint('Check if GoogleService-Info.plist or google-services.json is in the correct folder.');
   }
   
   runApp(

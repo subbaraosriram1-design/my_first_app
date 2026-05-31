@@ -17,7 +17,7 @@ abstract class AiService {
   Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest);
   Future<String> getPersonalGuidance(String goal, String prompt, Map<String, dynamic> userData);
   Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData);
-  Future<Map<String, dynamic>> getCollegeSuggestions(Map<String, dynamic> userData);
+  Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences});
   Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName);
 }
 
@@ -59,7 +59,7 @@ class GroqAiService implements AiService {
           ],
           "temperature": 0.7,
         }),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -253,29 +253,41 @@ class GroqAiService implements AiService {
   }
 
   @override
-  Future<Map<String, dynamic>> getCollegeSuggestions(Map<String, dynamic> userData) async {
+  Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences}) async {
     try {
+      final prefString = preferences != null ? "User Search Preferences: ${jsonEncode(preferences)}" : "";
       final prompt = """
         User Profile: ${jsonEncode(userData)}
+        $prefString
         
-        Provide an EXTREMELY detailed analysis of the user's profile based on Top 50-60 US College admission standards.
-        Return a JSON object with:
-        1. "strengths": A list of objects with "title" and "detailed_explanation" (explain WHY this is a strength for Top 50-60 schools).
-        2. "weaknesses": A list of objects with "title" and "detailed_explanation" (explain the impact of this gap and how it hurts Top 50-60 chances).
-        3. "suggestions": A list of 5 suitable US colleges with "name", "location", "match_reason", "how_to_achieve", "suitable_courses", and "match_percentage".
-        4. "top_60_roadmap": A list of 5-6 very specific, granular milestones needed to be competitive for Top 50-60 ranked institutions (e.g., specific GPA targets, extracurricular depth, and testing strategy).
+        Provide a tiered analysis of US colleges based on the profile and the specified preferences. 
+        You MUST categorize colleges into 3 tiers based on the Common Data Set (CDS) admission standards:
+        1. "Safety/Easy": 10 colleges where the user's profile is well above the 75th percentile.
+        2. "Match/Moderate": 10 colleges where the user's profile is between the 25th and 75th percentile.
+        3. "Reach/Hard": 10 elite colleges where the user's profile is below or at the 25th percentile.
 
-        Return ONLY a raw JSON object. Do not include markdown code blocks or additional text.
+        Important: Prioritize colleges that match the user's 'subjects' of interest and 'distanceRange' or 'campusSetting' if provided in preferences.
+        If 'effortLevel' is Low, suggest more Safety options. If High, focus on high-impact Reach schools.
+
+        For EACH college, provide:
+        - "name", "location", "match_percentage" (Current baseline based on GPA/Scores).
+        - "match_reason" (Reference CDS data points like GPA rigor and how it aligns with their preferences).
+        - "how_to_achieve" (Specific steps).
+        - "suitable_courses" (List).
+        - "roadmap_impact": A number (1-5) representing how much completing targeted actions improves their chance.
+        - "action_value": (E.g. 5) % increase for each completed action.
+
+        Return a JSON object with keys "safety", "match", and "reach", each containing 10 colleges.
+        Also include "strengths", "weaknesses", and "top_60_roadmap" for general context.
+        Return ONLY raw JSON.
       """;
 
       final result = await _callAi(prompt);
-      if (result != null) {
-        return json.decode(_stripMarkdown(result));
-      }
+      if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
-      print("Error in getCollegeSuggestions: $e");
+      print("Error in getTieredCollegeSuggestions: $e");
     }
-    return MockAiService().getCollegeSuggestions(userData);
+    return {};
   }
 
   @override
@@ -284,29 +296,20 @@ class GroqAiService implements AiService {
       final prompt = """
         User Profile: ${jsonEncode(userData)}
         College: $collegeName
-        Provide an exhaustive, multi-dimensional admission blueprint for $collegeName. 
-        Meticulously reference the Common Data Set (CDS) for $collegeName.
-        Return a JSON object with:
-        - "name": $collegeName
-        - "match_analysis": A deep, paragraph-length analysis of how their profile fits this specific institution.
-        - "academic_strategy": Specific advice on course rigor, weighted vs unweighted GPA priorities, and standardized testing timing.
-        - "action_plan": A comprehensive, step-by-step roadmap for the next 12-24 months.
-        - "chances": (Reach/Match/Safety).
-        - "holistic_narrative": How the user should position their unique "hook" or personal story in their application to this college.
-        - "suggested_extracurriculars": High-impact activities that specifically align with this college's values.
-        - "cds_insight": A critical data point from the most recent CDS.
-        
-        Return ONLY a raw JSON object. Do not include markdown code blocks or additional text.
+        Analyze admission probability based on $collegeName's Common Data Set (CDS).
+        Return JSON with:
+        - "name", "match_analysis", "academic_strategy", "action_plan", "chances" (Reach/Match/Safety).
+        - "base_percentage": (Initial % based on profile).
+        - "suggested_extracurriculars": List of high-impact actions.
+        - "action_value": (E.g. 5) % increase for each completed action.
+        - "holistic_narrative", "cds_insight".
       """;
-
       final result = await _callAi(prompt);
-      if (result != null) {
-        return json.decode(_stripMarkdown(result));
-      }
+      if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
       print("Error in getSpecificCollegeAdvice: $e");
     }
-    return MockAiService().getSpecificCollegeAdvice(userData, collegeName);
+    return {};
   }
 
   String _stripMarkdown(String text) {
@@ -371,45 +374,41 @@ class MockAiService implements AiService {
   }
 
   @override
-  Future<Map<String, dynamic>> getCollegeSuggestions(Map<String, dynamic> userData) async {
+  Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences}) async {
     return {
-      "strengths": [
-        {
-          "title": "Strong weighted GPA (4.2)",
-          "detailed_explanation": "A 4.2 weighted GPA places you in the top decile for many Top 50 schools. In the CDS Section C9, academic rigor and GPA are consistently rated as 'Very Important', making this your primary competitive anchor."
-        },
-        {
-          "title": "STEM Extracurricular Depth",
-          "detailed_explanation": "Your consistent involvement in AI and CS projects demonstrates 'Talent/Ability', a key holistic factor in CDS C7. This proves you have more than just grades; you have applied skills that Top 60 schools value for their incoming class diversity."
-        }
-      ],
-      "weaknesses": [
-        {
-          "title": "Lack of National-Level Awards",
-          "detailed_explanation": "While your local projects are strong, Top 50 colleges look for external validation. Without national awards (like AP Scholar with Distinction or Science Fair state wins), it's harder to stand out in the 'Exceptional Talent' category."
-        },
-        {
-          "title": "Unweighted GPA Discrepancy",
-          "detailed_explanation": "A significant gap between weighted and unweighted GPA can signal to admissions that you are excelling in APs but might have struggled in foundational courses. Schools like those in the Top 60 prioritize consistent high performance across all subjects."
-        }
-      ],
-      "suggestions": [
-        {
-          "name": "Stanford University",
-          "location": "Stanford, CA",
-          "match_reason": "Stanford values high academic rigor and intellectual vitality. Your 4.2 GPA and AI focus align perfectly with their 'Very Important' criteria in CDS C7.",
-          "how_to_achieve": "Maintain your GPA, lead an AI club, and aim for a 1560+ SAT to match their 75th percentile benchmarks.",
-          "suitable_courses": ["Computer Science", "Artificial Intelligence", "Symbolic Systems"],
-          "match_percentage": 95
-        }
-      ],
-      "top_60_roadmap": [
-        "Reach and maintain a 4.0 unweighted GPA in your junior year.",
-        "Secure at least two leadership positions in major school organizations.",
-        "Enter and place in a state or national-level competition relevant to your major.",
-        "Complete 100+ hours of community service with a clear leadership impact.",
-        "Achieve an SAT score of 1500+ or ACT of 34+ to be above the 50th percentile for Top 60 schools."
-      ]
+      "safety": List.generate(10, (i) => {
+        "name": "Safety College ${i + 1}",
+        "location": "Location ${i + 1}",
+        "match_percentage": 90 - i,
+        "match_reason": "Strong alignment with GPA.",
+        "how_to_achieve": "Maintain current grades.",
+        "suitable_courses": ["CS"],
+        "roadmap_impact": 3,
+        "action_value": 5
+      }),
+      "match": List.generate(10, (i) => {
+        "name": "Match College ${i + 1}",
+        "location": "Location ${i + 1}",
+        "match_percentage": 75 - i,
+        "match_reason": "Profile fits average student.",
+        "how_to_achieve": "Focus on extracurriculars.",
+        "suitable_courses": ["CS"],
+        "roadmap_impact": 4,
+        "action_value": 5
+      }),
+      "reach": List.generate(10, (i) => {
+        "name": "Reach College ${i + 1}",
+        "location": "Location ${i + 1}",
+        "match_percentage": 40 - i,
+        "match_reason": "Highly competitive admission.",
+        "how_to_achieve": "High SAT scores needed.",
+        "suitable_courses": ["CS"],
+        "roadmap_impact": 5,
+        "action_value": 5
+      }),
+      "strengths": [],
+      "weaknesses": [],
+      "top_60_roadmap": []
     };
   }
 

@@ -16,15 +16,24 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
+    try {
+      final dbPath = await getDatabasesPath();
+      final path = join(dbPath, filePath);
+      debugPrint('Initializing SQLite database at: $path');
 
-    return await openDatabase(
-      path,
-      version: 4,
-      onCreate: _createDB,
-      onUpgrade: _onUpgrade,
-    );
+      return await openDatabase(
+        path,
+        version: 4,
+        onCreate: _createDB,
+        onUpgrade: _onUpgrade,
+      );
+    } catch (e) {
+      debugPrint('SQLite Initialization Error: $e');
+      if (e.toString().contains('sqlite_c_ffi_not_found')) {
+        debugPrint('MAC/LINUX DESKTOP ERROR: You need sqflite_common_ffi and databaseFactory initialization in main.dart');
+      }
+      rethrow;
+    }
   }
 
   Future _createDB(Database db, int version) async {

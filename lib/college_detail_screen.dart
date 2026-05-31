@@ -107,33 +107,87 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> {
 
   Widget _buildChancesBadge() {
     final String chances = widget.advice['chances'] ?? 'Assessment';
+    
+    // Calculate current percentage including roadmap progress
+    final Map<String, dynamic> roadmapActions = Map<String, dynamic>.from(widget.advice['roadmapActions'] ?? {});
+    final int completedCount = roadmapActions.values.where((a) => a['isCompleted'] == true).length;
+    final int basePercentage = int.tryParse(widget.advice['base_percentage']?.toString() ?? widget.advice['match_percentage']?.toString() ?? '0') ?? 0;
+    final int actionValue = int.tryParse(widget.advice['action_value']?.toString() ?? '5') ?? 5;
+    final int currentPercentage = (basePercentage + (completedCount * actionValue)).clamp(0, 100);
+
     Color color = const Color(0xFF64748B);
     if (chances.toLowerCase().contains('reach')) color = const Color(0xFFEF4444);
     if (chances.toLowerCase().contains('match')) color = const Color(0xFF10B981);
     if (chances.toLowerCase().contains('safety')) color = const Color(0xFF3B82F6);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withAlpha(50)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.radar, color: color, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            'Admission Chances: $chances',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: color,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: color.withAlpha(20),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withAlpha(50)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.radar, color: color, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Chances: $chances',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: currentPercentage >= 80 ? Colors.green.withAlpha(20) : const Color(0xFFF0F9FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: (currentPercentage >= 80 ? Colors.green : const Color(0xFF0284C7)).withAlpha(50)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    currentPercentage >= 80 ? Icons.check_circle : Icons.trending_up, 
+                    color: currentPercentage >= 80 ? Colors.green : const Color(0xFF0284C7), 
+                    size: 18
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$currentPercentage% Admission Chance',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: currentPercentage >= 80 ? Colors.green : const Color(0xFF0284C7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (completedCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0, left: 4),
+            child: Text(
+              'Includes +${completedCount * actionValue}% from roadmap progress',
+              style: GoogleFonts.poppins(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w500),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -197,54 +251,94 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> {
     final List<dynamic> activities = widget.advice['suggested_extracurriculars'] ?? [];
     if (activities.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: FirebaseService.instance.getSavedColleges(FirebaseService.instance.currentUserId ?? ""),
+      builder: (context, snapshot) {
+        final Map<String, dynamic> currentRoadmap = snapshot.hasData 
+          ? (snapshot.data!.firstWhere((c) => c['name'] == widget.advice['name'], orElse: () => {})['roadmapActions'] ?? {})
+          : {};
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.star, color: Color(0xFFF59E0B), size: 20),
-              const SizedBox(width: 12),
-              Text(
-                'Target Extracurriculars',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.star, color: Color(0xFFF59E0B), size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Target Extracurriculars',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 16),
+              ...activities.map((activity) {
+                final bool isAdded = currentRoadmap.containsKey(activity.toString());
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(20),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withAlpha(30)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          activity.toString(),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.white.withAlpha(230),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      if (!_isSaved)
+                        const Text('Save to add', style: TextStyle(color: Colors.white38, fontSize: 10))
+                      else
+                        TextButton.icon(
+                          onPressed: () async {
+                            final userId = FirebaseService.instance.currentUserId;
+                            if (userId != null) {
+                              await FirebaseService.instance.updateCollegeRoadmapAction(
+                                userId,
+                                widget.advice['name'],
+                                activity.toString(),
+                                !isAdded,
+                              );
+                              setState(() {}); // Refresh local state
+                            }
+                          },
+                          icon: Icon(isAdded ? Icons.check : Icons.add, size: 16, color: Colors.white),
+                          label: Text(
+                            isAdded ? 'Added' : 'Add',
+                            style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          style: TextButton.styleFrom(
+                            backgroundColor: isAdded ? Colors.green.withAlpha(100) : const Color(0xFF5B3FD8).withAlpha(150),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ],
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 12,
-            children: activities.map((activity) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(20),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white.withAlpha(30)),
-                ),
-                child: Text(
-                  activity.toString(),
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.white.withAlpha(230),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
+        );
+      }
     );
   }
 }

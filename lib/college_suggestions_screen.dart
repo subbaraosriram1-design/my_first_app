@@ -4,6 +4,8 @@ import 'ai_service.dart';
 import 'firebase_service.dart';
 import 'college_detail_screen.dart';
 import 'saved_colleges_screen.dart';
+import 'tailored_suggestions_page.dart';
+import 'college_preferences_screen.dart';
 
 class CollegeSuggestionsScreen extends StatefulWidget {
   const CollegeSuggestionsScreen({super.key});
@@ -15,7 +17,9 @@ class CollegeSuggestionsScreen extends StatefulWidget {
 class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
   final AiService _aiService = GroqAiService();
   final TextEditingController _searchController = TextEditingController();
-  List<dynamic> _suggestions = [];
+  List<dynamic> _safetySuggestions = [];
+  List<dynamic> _matchSuggestions = [];
+  List<dynamic> _reachSuggestions = [];
   List<dynamic> _strengths = [];
   List<dynamic> _weaknesses = [];
   List<dynamic> _top60Roadmap = [];
@@ -32,12 +36,16 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
     final userId = FirebaseService.instance.currentUserId;
     if (userId != null) {
       final userData = await FirebaseService.instance.getResume(userId);
+      final preferences = await FirebaseService.instance.getCollegePreferences(userId);
+      
       if (userData != null) {
         try {
-          final data = await _aiService.getCollegeSuggestions(userData);
+          final data = await _aiService.getTieredCollegeSuggestions(userData, preferences: preferences);
           if (mounted) {
             setState(() {
-              _suggestions = data['suggestions'] ?? [];
+              _safetySuggestions = data['safety'] ?? [];
+              _matchSuggestions = data['match'] ?? [];
+              _reachSuggestions = data['reach'] ?? [];
               _strengths = data['strengths'] ?? [];
               _weaknesses = data['weaknesses'] ?? [];
               _top60Roadmap = data['top_60_roadmap'] ?? [];
@@ -97,7 +105,7 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
-          'College Suggestions',
+          'College Intelligence',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
         ),
         backgroundColor: Colors.white,
@@ -108,6 +116,20 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.tune, color: Color(0xFF5B3FD8)),
+            tooltip: 'Search Preferences',
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CollegePreferencesScreen()),
+              );
+              if (result == true) {
+                setState(() => _isLoading = true);
+                _fetchSuggestions();
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.bookmarks_outlined, color: Color(0xFF5B3FD8)),
             onPressed: () => Navigator.push(
@@ -138,21 +160,64 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
                             child: CircularProgressIndicator(color: Color(0xFF5B3FD8)),
                           ),
                         ),
-                      Text(
-                        'Tailored Suggestions',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1E293B),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ..._suggestions.map((college) => _buildCollegeCard(college as Map<String, dynamic>)),
+                      _buildTailoredListPreview(),
                     ],
                   ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTailoredListPreview() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Tiered Suggestions',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1E293B),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TailoredSuggestionsPage(tieredSuggestions: {
+                    'safety': _safetySuggestions,
+                    'match': _matchSuggestions,
+                    'reach': _reachSuggestions,
+                  }),
+                ),
+              ),
+              child: Text('View 30 Matches', style: GoogleFonts.poppins(color: const Color(0xFF5B3FD8))),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildTierPreview('Reach (Top Difficulty)', _reachSuggestions),
+        const SizedBox(height: 16),
+        _buildTierPreview('Match (Moderate)', _matchSuggestions),
+        const SizedBox(height: 16),
+        _buildTierPreview('Safety (Easy)', _safetySuggestions),
+      ],
+    );
+  }
+
+  Widget _buildTierPreview(String title, List<dynamic> colleges) {
+    if (colleges.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF64748B))),
+        const SizedBox(height: 8),
+        ...colleges.take(2).map((college) => _buildCollegeCard(college as Map<String, dynamic>)),
+      ],
     );
   }
 

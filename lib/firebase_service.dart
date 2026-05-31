@@ -51,18 +51,26 @@ class FirebaseService {
   // Firestore Resume Operations
   Future<void> saveResume(String userId, Map<String, dynamic> data) async {
     try {
+      debugPrint('Saving resume for user: $userId');
       await _firestore.collection('resumes').doc(userId).set(data, SetOptions(merge: true));
+      debugPrint('Resume saved successfully');
     } catch (e) {
       debugPrint('Firestore Save Error: $e');
+      if (e.toString().contains('permission-denied')) {
+        debugPrint('CHECK YOUR FIRESTORE RULES: Security rules might be blocking this write.');
+      }
     }
   }
 
   Future<Map<String, dynamic>?> getResume(String userId) async {
     try {
+      debugPrint('Fetching resume for user: $userId');
       DocumentSnapshot doc = await _firestore.collection('resumes').doc(userId).get();
       if (doc.exists) {
+        debugPrint('Resume found');
         return doc.data() as Map<String, dynamic>;
       }
+      debugPrint('No resume found for user: $userId');
       return null;
     } catch (e) {
       debugPrint('Firestore Get Error: $e');
@@ -217,6 +225,75 @@ class FirebaseService {
       }
     } catch (e) {
       debugPrint('Firestore RemoveSavedCollege Error: $e');
+    }
+  }
+
+  // Save/Get College Preferences
+  Future<void> saveCollegePreferences(String userId, Map<String, dynamic> prefs) async {
+    try {
+      await _firestore.collection('resumes').doc(userId).update({'collegePreferences': prefs});
+    } catch (e) {
+      debugPrint('Firestore SaveCollegePreferences Error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> getCollegePreferences(String userId) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('resumes').doc(userId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['collegePreferences'] as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Firestore GetCollegePreferences Error: $e');
+      return null;
+    }
+  }
+
+  // Add/Update specific roadmap action for a college
+  Future<void> updateCollegeRoadmapAction(String userId, String collegeName, String actionTitle, bool isAdded, {bool isCompleted = false}) async {
+    try {
+      final docRef = _firestore.collection('resumes').doc(userId);
+      final doc = await docRef.get();
+      if (doc.exists) {
+        List<dynamic> savedColleges = List<dynamic>.from(doc.data()?['savedColleges'] ?? []);
+        int index = savedColleges.indexWhere((c) => c['name'] == collegeName);
+        if (index != -1) {
+          Map<String, dynamic> college = Map<String, dynamic>.from(savedColleges[index]);
+          Map<String, dynamic> roadmapActions = Map<String, dynamic>.from(college['roadmapActions'] ?? {});
+          
+          if (isAdded) {
+            roadmapActions[actionTitle] = {
+              'title': actionTitle,
+              'isCompleted': isCompleted,
+              'addedAt': DateTime.now().toIso8601String(),
+            };
+          } else {
+            roadmapActions.remove(actionTitle);
+          }
+          
+          college['roadmapActions'] = roadmapActions;
+          savedColleges[index] = college;
+          await docRef.update({'savedColleges': savedColleges});
+        }
+      }
+    } catch (e) {
+      debugPrint('Firestore UpdateCollegeRoadmapAction Error: $e');
+    }
+  }
+
+  // Connectivity Check
+  Future<bool> checkConnection() async {
+    try {
+      debugPrint('Checking Firestore connectivity...');
+      // Try a lightweight operation
+      await _firestore.collection('config').limit(1).get(const GetOptions(source: Source.server));
+      debugPrint('Firestore connection verified');
+      return true;
+    } catch (e) {
+      debugPrint('Firestore Connection Check Failed: $e');
+      return false;
     }
   }
 }
