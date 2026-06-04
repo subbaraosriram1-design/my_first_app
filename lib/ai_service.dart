@@ -20,6 +20,7 @@ abstract class AiService {
   Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData);
   Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences});
   Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName);
+  Future<Map<String, dynamic>> getTargetActionPlan(String collegeName, String actionTitle, Map<String, dynamic> userData);
   Future<List<Map<String, dynamic>>> searchCollegesByName(String query);
 }
 
@@ -316,7 +317,7 @@ class GroqAiService implements AiService {
         - "avg_gpa", "avg_sat", "avg_act": (Specific to $collegeName).
         - "extracurricular_strategy": (Detailed advice on which activities $collegeName values most, e.g. leadership, research, service).
         - "extracurricular_weight": (High/Medium/Low - how much they value non-academics).
-        - "suggested_extracurriculars": List of objects with "title" and "resource_link" (Provide a real helpful URL like Khan Academy, Coursera, or official research portals for each).
+        - "suggested_extracurriculars": List of objects with "title", "suggestion", and "resource_link" (Provide a real helpful URL like Khan Academy, Coursera, or official research portals for each. The suggestion should explain HOW this specific activity helps for $collegeName).
         - "action_value": (E.g. 5) % increase for each completed action.
         - "holistic_narrative", "cds_insight".
         - "financial_aid_hint": (Briefly mention their aid policy, e.g. need-blind).
@@ -330,6 +331,17 @@ class GroqAiService implements AiService {
       rethrow;
     }
     return {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> getTargetActionPlan(String collegeName, String actionTitle, Map<String, dynamic> userData) async {
+    return {
+      "title": actionTitle,
+      "overview": "Detailed strategy for $actionTitle at $collegeName.",
+      "steps": ["Step 1: Research requirements", "Step 2: Create a timeline", "Step 3: Execute and document"],
+      "google_search_link": "https://www.google.com/search?q=$actionTitle+for+$collegeName",
+      "youtube_search_link": "https://www.youtube.com/results?search_query=$actionTitle+guide"
+    };
   }
 
   @override
@@ -568,9 +580,21 @@ class MockAiService implements AiService {
       "chances": "Reach",
       "holistic_narrative": "Focus your application on the intersection of ethics and AI. Positioning yourself as a future leader who understands societal impact.",
       "suggested_extracurriculars": [
-        {"title": "Math Olympiad", "resource_link": "https://www.maa.org/math-competitions"},
-        {"title": "Student Council", "resource_link": "https://www.natstuco.org/"},
-        {"title": "AI Research Project", "resource_link": "https://www.edx.org/course/artificial-intelligence-ai"}
+        {
+          "title": "Math Olympiad", 
+          "suggestion": "Participating in high-level math competitions demonstrates the quantitative rigor $collegeName looks for in STEM applicants.",
+          "resource_link": "https://www.maa.org/math-competitions"
+        },
+        {
+          "title": "Student Council", 
+          "suggestion": "Leadership roles are critical for $collegeName's holistic review. This shows you can lead and influence your community.",
+          "resource_link": "https://www.natstuco.org/"
+        },
+        {
+          "title": "AI Research Project", 
+          "suggestion": "Independent research projects show intellectual curiosity and initiative, setting you apart from other high-achieving students.",
+          "resource_link": "https://www.edx.org/course/artificial-intelligence-ai"
+        }
       ],
       "avg_gpa": 3.9,
       "avg_sat": 1520,
@@ -579,6 +603,17 @@ class MockAiService implements AiService {
       "extracurricular_weight": "High",
       "financial_aid_hint": "Need-blind for domestic students, meets 100% of demonstrated need.",
       "cds_insight": "Extracurricular activities and character are rated 'Very Important' in their Basis for Selection (CDS C7)."
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> getTargetActionPlan(String collegeName, String actionTitle, Map<String, dynamic> userData) async {
+    return {
+      "title": actionTitle,
+      "overview": "Detailed strategy for $actionTitle at $collegeName.",
+      "steps": ["Step 1: Research requirements", "Step 2: Create a timeline", "Step 3: Execute and document"],
+      "google_search_link": "https://www.google.com/search?q=$actionTitle+for+$collegeName",
+      "youtube_search_link": "https://www.youtube.com/results?search_query=$actionTitle+guide"
     };
   }
 

@@ -252,7 +252,7 @@ class FirebaseService {
   }
 
   // Add/Update specific roadmap action for a college
-  Future<void> updateCollegeRoadmapAction(String userId, String collegeName, String actionTitle, bool isAdded, {bool isCompleted = false}) async {
+  Future<void> updateCollegeRoadmapAction(String userId, String collegeName, String actionTitle, bool isAdded, {bool isCompleted = false, Map<String, dynamic>? actionData}) async {
     try {
       final docRef = _firestore.collection('resumes').doc(userId);
       final doc = await docRef.get();
@@ -268,6 +268,7 @@ class FirebaseService {
               'title': actionTitle,
               'isCompleted': isCompleted,
               'addedAt': DateTime.now().toIso8601String(),
+              if (actionData != null) ...actionData,
             };
           } else {
             roadmapActions.remove(actionTitle);

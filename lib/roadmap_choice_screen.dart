@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'career_roadmap_list_screen.dart';
 import 'personal_roadmap_choice_screen.dart';
 import 'saved_colleges_screen.dart';
+import 'college_roadmap_view_screen.dart';
 
 class RoadmapChoiceScreen extends StatelessWidget {
   const RoadmapChoiceScreen({super.key});
@@ -70,6 +71,18 @@ class RoadmapChoiceScreen extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SavedCollegesScreen()),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildChoiceCard(
+                context,
+                title: 'Real College Roadmap',
+                description: 'Deep dive into specific admission actions and AI guidance.',
+                icon: Icons.auto_awesome_motion_rounded,
+                color: const Color(0xFF6366F1),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CollegeRoadmapViewScreen()),
                 ),
               ),
             ],

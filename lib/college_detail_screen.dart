@@ -185,7 +185,7 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
                       '24-Month Action Plan',
                       widget.advice['action_plan'],
                       Icons.calendar_today_rounded,
-                      _primaryColor.withOpacity(0.8),
+                      _primaryColor.withValues(alpha: 0.8),
                     ),
                     const SizedBox(height: 20),
                     _buildRoadmapSection(),
@@ -232,7 +232,7 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
                 child: Icon(
                   Icons.account_balance_rounded,
                   size: 150,
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                 ),
               ),
             ],
@@ -275,7 +275,7 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: color.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Column(
@@ -301,7 +301,7 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
                     height: 60,
                     child: CircularProgressIndicator(
                       value: currentPercentage / 100,
-                      backgroundColor: color.withOpacity(0.1),
+                      backgroundColor: color.withValues(alpha: 0.1),
                       valueColor: AlwaysStoppedAnimation<Color>(color),
                       strokeWidth: 8,
                       strokeCap: StrokeCap.round,
@@ -342,9 +342,9 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         'Value: $weight',
@@ -442,7 +442,7 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
               height: 12,
               width: (user / max) * 300, // Normalized
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [color.withOpacity(0.6), color]),
+                gradient: LinearGradient(colors: [color.withValues(alpha: 0.6), color]),
                 borderRadius: BorderRadius.circular(6),
               ),
             ),
@@ -471,9 +471,9 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: color.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,7 +483,7 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 22),
@@ -493,13 +493,13 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
                     if (subtitle != null)
                       Text(subtitle, style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500])),
                   ],
                 ),
               ),
-              if (extra != null) extra,
+              extra ?? const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 20),
@@ -507,7 +507,7 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
             displayContent,
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: const Color(0xFF475569),
+              color: const Color(0xFF334155),
               height: 1.7,
             ),
           ),
@@ -527,14 +527,28 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
         final List<dynamic> aiSuggestions = widget.advice['suggested_extracurriculars'] ?? [];
         
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Divider(height: 60),
+            Row(
+              children: [
+                Icon(Icons.map_rounded, color: _primaryColor, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  'Roadmap Analysis & Strategy',
+                  style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your personalized path to admission at ${widget.advice['name']}. Complete targets to increase your chances.',
+              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 24),
             _buildTargetCategory(
               'Your Active Targets',
-              currentRoadmap.values.map((v) => {
-                'title': v['title'] ?? '',
-                'isCompleted': v['isCompleted'] ?? false,
-                'resource_link': v['resource_link'],
-              }).toList(),
+              currentRoadmap.values.toList(),
               true,
               currentRoadmap,
             ),
@@ -544,7 +558,7 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
               aiSuggestions.where((s) {
                 final title = s is Map ? (s['title'] ?? '') : s.toString();
                 return !currentRoadmap.containsKey(title);
-              }).map((s) => s is Map ? s : {'title': s.toString(), 'resource_link': null}).toList(),
+              }).toList(),
               false,
               currentRoadmap,
             ),
@@ -563,16 +577,12 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isActive 
-            ? [const Color(0xFF1E293B), _primaryColor.withOpacity(0.8)]
-            : [Colors.white, const Color(0xFFF8FAFC)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: isActive ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(28),
         border: isActive ? null : Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: isActive ? [] : [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        boxShadow: isActive 
+          ? [BoxShadow(color: _primaryColor.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))] 
+          : [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -599,9 +609,16 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
                 ],
               ),
               if (isActive)
-                Text(
-                  '${items.length} Active',
-                  style: GoogleFonts.poppins(color: Colors.white60, fontSize: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${items.length} Active',
+                    style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
                 ),
             ],
           ),
@@ -624,86 +641,34 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
 
   Widget _buildTargetItem(dynamic item, bool isActive, Map<String, dynamic> currentRoadmap) {
     final String title = item is Map ? (item['title'] ?? '') : item.toString();
+    final String? suggestion = item is Map ? item['suggestion'] : null;
     final String? link = item is Map ? item['resource_link'] : null;
     final bool isCompleted = isActive && (item is Map && (item['isCompleted'] == true));
     final bool isAdded = currentRoadmap.containsKey(title);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+    final Color itemColor = isActive 
+        ? (isCompleted ? const Color(0xFF10B981) : Colors.white.withValues(alpha: 0.9))
+        : const Color(0xFF1E293B);
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: isActive 
-            ? (isCompleted ? const Color(0xFF10B981).withOpacity(0.2) : Colors.white.withOpacity(0.08))
-            : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(16),
+            ? (isCompleted ? const Color(0xFF10B981).withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05))
+            : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isActive 
-              ? (isCompleted ? const Color(0xFF10B981).withOpacity(0.4) : Colors.white.withOpacity(0.1))
-              : Colors.transparent,
+              ? (isCompleted ? const Color(0xFF10B981).withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1))
+              : const Color(0xFFE2E8F0),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isActive)
-                  Text(
-                    isCompleted ? 'TARGET REACHED' : 'ADMISSION TARGET',
-                    style: GoogleFonts.poppins(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: isCompleted ? const Color(0xFF10B981) : _accentColor.withOpacity(0.8),
-                      letterSpacing: 1,
-                    ),
-                  ),
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: isActive 
-                        ? (isCompleted ? const Color(0xFF10B981) : Colors.white.withOpacity(0.9))
-                        : const Color(0xFF1E293B),
-                    fontWeight: isCompleted ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-                if (link != null && link.isNotEmpty)
-                  GestureDetector(
-                    onTap: () async {
-                      final uri = Uri.parse(link);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri);
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Row(
-                        children: [
-                          Icon(Icons.link, size: 12, color: isActive ? Colors.white54 : _primaryColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            'View Resource',
-                            style: GoogleFonts.poppins(
-                              fontSize: 10, 
-                              color: isActive ? Colors.white54 : _primaryColor,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          if (!_isSaved)
-            Text('Save first', style: GoogleFonts.poppins(color: isActive ? Colors.white38 : Colors.grey, fontSize: 10))
-          else ...[
-            if (isActive) 
-              GestureDetector(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: isActive 
+            ? GestureDetector(
                 onTap: () async {
                   final userId = FirebaseService.instance.currentUserId;
                   final collegeName = widget.advice['name']?.toString() ?? 'Unknown College';
@@ -727,36 +692,98 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
                     size: 16,
                   ),
                 ),
-              ),
-            const SizedBox(width: 12),
-            InkWell(
-              onTap: () async {
-                final userId = FirebaseService.instance.currentUserId;
-                final collegeName = widget.advice['name']?.toString() ?? 'Unknown College';
-                if (userId != null) {
+              )
+            : Icon(Icons.add_task_rounded, color: _primaryColor.withValues(alpha: 0.5), size: 20),
+          title: Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: itemColor,
+              fontWeight: isCompleted ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+          trailing: InkWell(
+            onTap: () async {
+              final userId = FirebaseService.instance.currentUserId;
+              final collegeName = widget.advice['name']?.toString() ?? 'Unknown College';
+              if (userId != null) {
+                if (!isAdded) {
+                  // Adding from AI suggestions
                   await FirebaseService.instance.updateCollegeRoadmapAction(
-                    userId, collegeName, title, !isAdded,
+                    userId, collegeName, title, true,
+                    actionData: item is Map ? Map<String, dynamic>.from(item) : null,
                   );
-                  setState(() {});
+                } else {
+                  // Removing from active
+                  await FirebaseService.instance.updateCollegeRoadmapAction(
+                    userId, collegeName, title, false,
+                  );
                 }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isAdded 
-                      ? (isActive ? Colors.white.withOpacity(0.1) : Colors.red.withOpacity(0.1)) 
-                      : _primaryColor,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  isAdded ? Icons.remove_rounded : Icons.add_rounded,
-                  color: isAdded ? (isActive ? Colors.white : Colors.red) : Colors.white,
-                  size: 18,
-                ),
+                setState(() {});
+              }
+            },
+            child: Icon(
+              isAdded ? Icons.remove_circle_outline_rounded : Icons.add_circle_outline_rounded,
+              color: isAdded 
+                  ? (isActive ? Colors.white.withValues(alpha: 0.54) : Colors.redAccent)
+                  : (isActive ? Colors.white : _primaryColor),
+              size: 22,
+            ),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 8),
+                  Text(
+                    suggestion ?? 'This target helps build a competitive profile for ${widget.advice['name']} by demonstrating your commitment and relevant skills.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: isActive ? Colors.white.withValues(alpha: 0.7) : Colors.grey.shade700,
+                      height: 1.6,
+                    ),
+                  ),
+                  if (link != null && link.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () async {
+                        final uri = Uri.parse(link);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isActive ? Colors.white.withValues(alpha: 0.1) : _primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.link_rounded, size: 14, color: isActive ? Colors.white : _primaryColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Expert Resource',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isActive ? Colors.white : _primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -768,15 +795,22 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Set Custom Target',
-            style: GoogleFonts.poppins(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+          Row(
+            children: [
+              const Icon(Icons.edit_note_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Text(
+                'Set Custom Target',
+                style: GoogleFonts.poppins(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -785,14 +819,14 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
                   style: GoogleFonts.poppins(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'e.g. Visit campus, Contact alum...',
-                    hintStyle: GoogleFonts.poppins(color: Colors.white24, fontSize: 13),
+                    hintStyle: GoogleFonts.poppins(color: Colors.white.withValues(alpha: 0.24), fontSize: 13),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: Colors.white.withValues(alpha: 0.05),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                 ),
               ),
@@ -813,10 +847,11 @@ class _CollegeDetailScreenState extends State<CollegeDetailScreen> with TickerPr
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: _accentColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: _accentColor.withValues(alpha: 0.3), blurRadius: 10)],
                   ),
                   child: const Icon(Icons.add, color: Colors.white, size: 20),
                 ),

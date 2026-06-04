@@ -90,7 +90,7 @@ class _SavedCollegesScreenState extends State<SavedCollegesScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20)],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20)],
             ),
             child: Icon(Icons.auto_awesome_rounded, size: 48, color: Colors.grey.shade300),
           ),
@@ -148,7 +148,7 @@ class _SavedCollegesScreenState extends State<SavedCollegesScreen> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: primaryColor.withOpacity(0.08),
+              color: primaryColor.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -164,7 +164,7 @@ class _SavedCollegesScreenState extends State<SavedCollegesScreen> {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(Icons.account_balance_rounded, color: primaryColor),
@@ -194,7 +194,7 @@ class _SavedCollegesScreenState extends State<SavedCollegesScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: chanceColor.withOpacity(0.1),
+                      color: chanceColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -247,7 +247,7 @@ class _SavedCollegesScreenState extends State<SavedCollegesScreen> {
                           borderRadius: BorderRadius.circular(2),
                           child: LinearProgressIndicator(
                             value: currentPercentage / 100,
-                            backgroundColor: chanceColor.withOpacity(0.1),
+                            backgroundColor: chanceColor.withValues(alpha: 0.1),
                             valueColor: AlwaysStoppedAnimation<Color>(chanceColor),
                           ),
                         ),
