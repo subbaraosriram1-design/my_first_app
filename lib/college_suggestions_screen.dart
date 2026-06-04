@@ -14,22 +14,35 @@ class CollegeSuggestionsScreen extends StatefulWidget {
   State<CollegeSuggestionsScreen> createState() => _CollegeSuggestionsScreenState();
 }
 
-class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
+class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> with SingleTickerProviderStateMixin {
   final AiService _aiService = GroqAiService();
   final TextEditingController _searchController = TextEditingController();
+  late AnimationController _gradientController;
   List<dynamic> _safetySuggestions = [];
   List<dynamic> _matchSuggestions = [];
   List<dynamic> _reachSuggestions = [];
   List<dynamic> _strengths = [];
   List<dynamic> _weaknesses = [];
   List<dynamic> _top60Roadmap = [];
+  List<Map<String, dynamic>> _searchResults = [];
   bool _isLoading = true;
   bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
+    _gradientController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat();
     _fetchSuggestions();
+  }
+
+  @override
+  void dispose() {
+    _gradientController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchSuggestions() async {
@@ -51,12 +64,22 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
               _top60Roadmap = data['top_60_roadmap'] ?? [];
               _isLoading = false;
             });
+            
+            if (_safetySuggestions.isEmpty && _matchSuggestions.isEmpty && _reachSuggestions.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('AI returned no college suggestions. Please check your profile/preferences.')),
+              );
+            }
           }
         } catch (e) {
           if (mounted) {
             setState(() => _isLoading = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error fetching suggestions: $e')),
+              SnackBar(
+                content: Text('AI Intelligence Error: $e'),
+                backgroundColor: Colors.redAccent,
+                duration: const Duration(seconds: 5),
+              ),
             );
           }
         }
@@ -65,13 +88,42 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
   }
 
   Future<void> _searchSpecificCollege() async {
-    final collegeName = _searchController.text.trim();
-    if (collegeName.isEmpty) return;
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      setState(() => _searchResults = []);
+      return;
+    }
 
     setState(() {
       _isSearching = true;
+      _searchResults = [];
     });
 
+    try {
+      final results = await _aiService.searchCollegesByName(query);
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+        if (results.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No colleges found with that name.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSearching = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error searching colleges: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _navigateToCollegeDetail(String collegeName) async {
+    setState(() => _isSearching = true);
     final userId = FirebaseService.instance.currentUserId;
     if (userId != null) {
       final userData = await FirebaseService.instance.getResume(userId);
@@ -91,7 +143,7 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
           if (mounted) {
             setState(() => _isSearching = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error searching college: $e')),
+              SnackBar(content: Text('Error fetching college details: $e')),
             );
           }
         }
@@ -143,6 +195,7 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
       body: Column(
         children: [
           _buildSearchBar(),
+          if (_searchResults.isNotEmpty) _buildSearchResultsList(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF5B3FD8)))
@@ -173,33 +226,85 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Tiered Suggestions',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF1E293B),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TailoredSuggestionsPage(tieredSuggestions: {
-                    'safety': _safetySuggestions,
-                    'match': _matchSuggestions,
-                    'reach': _reachSuggestions,
-                  }),
+        AnimatedBuilder(
+          animation: _gradientController,
+          builder: (context, child) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: const [
+                    Color(0xFF5B3FD8),
+                    Color(0xFF8B5CF6),
+                    Color(0xFFEC4899),
+                    Color(0xFF5B3FD8),
+                  ],
+                  stops: [
+                    0.0,
+                    _gradientController.value,
+                    _gradientController.value + 0.3 > 1.0 ? 1.0 : _gradientController.value + 0.3,
+                    1.0,
+                  ],
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF5B3FD8).withAlpha(30),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: Text('View 30 Matches', style: GoogleFonts.poppins(color: const Color(0xFF5B3FD8))),
-            ),
-          ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Tiered Suggestions',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TailoredSuggestionsPage(tieredSuggestions: {
+                          'safety': _safetySuggestions,
+                          'match': _matchSuggestions,
+                          'reach': _reachSuggestions,
+                        }),
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.white.withAlpha(50),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text(
+                      'View 30 Matches',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
         _buildTierPreview('Reach (Top Difficulty)', _reachSuggestions),
         const SizedBox(height: 16),
         _buildTierPreview('Match (Moderate)', _matchSuggestions),
@@ -216,7 +321,10 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
       children: [
         Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF64748B))),
         const SizedBox(height: 8),
-        ...colleges.take(2).map((college) => _buildCollegeCard(college as Map<String, dynamic>)),
+        ...colleges.take(2).map((college) {
+          if (college is! Map<String, dynamic>) return const SizedBox.shrink();
+          return _buildCollegeCard(college);
+        }),
       ],
     );
   }
@@ -266,7 +374,25 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
         ),
         const SizedBox(height: 16),
         ...items.map((item) {
-          final data = item as Map<String, dynamic>;
+          if (item is! Map<String, dynamic>) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.arrow_right, color: Color(0xFF64748B)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.toString(),
+                      style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF1E293B)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          final data = item;
           return Padding(
             padding: const EdgeInsets.only(bottom: 16.0),
             child: ExpansionTile(
@@ -349,8 +475,17 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
           hintStyle: GoogleFonts.poppins(color: const Color(0xFF94A3B8)),
           prefixIcon: const Icon(Icons.search, color: Color(0xFF64748B)),
           suffixIcon: IconButton(
-            icon: const Icon(Icons.send, color: Color(0xFF5B3FD8)),
-            onPressed: _searchSpecificCollege,
+            icon: Icon(_searchResults.isNotEmpty ? Icons.close : Icons.send, color: const Color(0xFF5B3FD8)),
+            onPressed: () {
+              if (_searchResults.isNotEmpty) {
+                setState(() {
+                  _searchResults = [];
+                  _searchController.clear();
+                });
+              } else {
+                _searchSpecificCollege();
+              }
+            },
           ),
           filled: true,
           fillColor: const Color(0xFFF1F5F9),
@@ -362,6 +497,48 @@ class _CollegeSuggestionsScreenState extends State<CollegeSuggestionsScreen> {
         ),
         style: GoogleFonts.poppins(fontSize: 14),
         onSubmitted: (_) => _searchSpecificCollege(),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsList() {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 250),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(10),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        itemCount: _searchResults.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final college = _searchResults[index];
+          return ListTile(
+            leading: const Icon(Icons.school_outlined, color: Color(0xFF5B3FD8)),
+            title: Text(
+              college['name'] ?? '',
+              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              college['location'] ?? '',
+              style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B)),
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF94A3B8)),
+            onTap: () {
+              _navigateToCollegeDetail(college['name']);
+              setState(() => _searchResults = []);
+            },
+          );
+        },
       ),
     );
   }

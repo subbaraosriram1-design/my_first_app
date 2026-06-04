@@ -285,13 +285,19 @@ class _LoginPageState extends State<LoginPage> {
             onPressed: () async {
               final email = emailController.text.trim();
               if (email.isNotEmpty) {
+                // Capture the navigator before the async gap
+                final navigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                
                 final userExists = await FirebaseService.instance.getResumeByEmail(email) != null;
+                
                 if (!mounted) return;
-                Navigator.pop(context);
+                navigator.pop();
+                
                 if (userExists) {
                   _showNewPasswordDialog(email);
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     const SnackBar(content: Text('User not found.')),
                   );
                 }
@@ -328,14 +334,18 @@ class _LoginPageState extends State<LoginPage> {
             onPressed: () async {
               final newPass = newPasswordController.text.trim();
               if (newPass.length >= 6) {
+                final navigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                
                 final success = await FirebaseService.instance.updatePasswordByEmail(email, newPass);
+                
                 if (mounted) {
-                  Navigator.pop(context);
+                  navigator.pop();
                   setState(() {
                     _actualPassword = '';
                     _passwordController.clear();
                   });
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(content: Text(success ? 'Password updated successfully!' : 'Failed to update password.')),
                   );
                 }
@@ -390,7 +400,24 @@ class _LoginPageState extends State<LoginPage> {
       if (_signUpStep < _totalSignUpSteps - 1) {
         // Validation logic for step 1 (Account Security)
         if (_signUpStep == 0) {
-           if (!_formKey.currentState!.validate()) return;
+          if (!_formKey.currentState!.validate()) return;
+          
+          setState(() => _isProcessing = true);
+          final email = _emailController.text.trim();
+          final userExists = await FirebaseService.instance.getResumeByEmail(email) != null;
+          setState(() => _isProcessing = false);
+
+          if (userExists) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Account already exists. Please login instead.'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+            return;
+          }
         }
         setState(() {
           _signUpStep++;
@@ -1923,7 +1950,9 @@ class _LoginPageState extends State<LoginPage> {
         };
 
         await FirebaseService.instance.saveResume(userId, resumeData);
-        if (mounted) Navigator.pop(context, true);
+        if (mounted) {
+          Navigator.pop(context, true);
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1931,7 +1960,9 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
       } finally {
-        if (mounted) setState(() => _isProcessing = false);
+        if (mounted) {
+          setState(() => _isProcessing = false);
+        }
       }
     }
   }

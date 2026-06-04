@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'firebase_service.dart';
 import 'api_config.dart';
@@ -19,6 +20,7 @@ abstract class AiService {
   Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData);
   Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences});
   Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName);
+  Future<List<Map<String, dynamic>>> searchCollegesByName(String query);
 }
 
 /// Implementation using Groq
@@ -34,7 +36,7 @@ class GroqAiService implements AiService {
     }
     
     if (apiKey == null || apiKey.isEmpty) {
-      print("Error: AI API Key not found.");
+      debugPrint("Error: AI API Key not found.");
       return null;
     }
 
@@ -53,7 +55,10 @@ class GroqAiService implements AiService {
               "content": "You are a professional, extremely polite, and encouraging career guidance assistant. "
                          "Always use a positive tone. Your goal is to inspire and motivate the user. "
                          "When you see their accomplishments, praise them warmly. "
-                         "Never be demotivating. Always respond in JSON format when requested."
+                         "Never be demotivating. "
+                         "IMPORTANT: When JSON is requested, return ONLY valid JSON. "
+                         "Ensure all strings are properly closed and all brackets match. "
+                         "Do not include any text before or after the JSON block."
             },
             {"role": "user", "content": prompt}
           ],
@@ -69,7 +74,7 @@ class GroqAiService implements AiService {
         throw Exception(errorData['error']?['message'] ?? "API Error ${response.statusCode}");
       }
     } catch (e) {
-      print("AI API Call Exception: $e");
+      debugPrint("AI API Call Exception: $e");
       rethrow;
     }
   }
@@ -88,7 +93,7 @@ class GroqAiService implements AiService {
         return json.decode(cleanText);
       }
     } catch (e) {
-      print("Error in getNextSteps: $e");
+      debugPrint("Error in getNextSteps: $e");
     }
     return MockAiService().getNextSteps(skills, interests);
   }
@@ -110,7 +115,7 @@ class GroqAiService implements AiService {
         }).toList();
       }
     } catch (e) {
-      print("Error in getCareerTrajectory: $e");
+      debugPrint("Error in getCareerTrajectory: $e");
     }
     return MockAiService().getCareerTrajectory(skills);
   }
@@ -152,7 +157,7 @@ class GroqAiService implements AiService {
       final result = await _callAi(prompt);
       if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
-      print("Error in getDetailedCareerPlan: $e");
+      debugPrint("Error in getDetailedCareerPlan: $e");
     }
     return {};
   }
@@ -164,7 +169,7 @@ class GroqAiService implements AiService {
       final result = await _callAi(prompt);
       if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
-      print("Error in getSkillResources: $e");
+      debugPrint("Error in getSkillResources: $e");
     }
     return {};
   }
@@ -176,7 +181,7 @@ class GroqAiService implements AiService {
       final result = await _callAi(prompt);
       if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
-      print("Error in getCareerAnalysis: $e");
+      debugPrint("Error in getCareerAnalysis: $e");
     }
     return MockAiService().getCareerAnalysis(userData, primaryInterest);
   }
@@ -191,7 +196,7 @@ class GroqAiService implements AiService {
         return List<Map<String, dynamic>>.from(decoded);
       }
     } catch (e) {
-      print("Error in getNearbyRecommendations: $e");
+      debugPrint("Error in getNearbyRecommendations: $category: $e");
     }
     return [];
   }
@@ -207,7 +212,7 @@ class GroqAiService implements AiService {
       final result = await _callAi(prompt);
       if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
-      print("Error in generatePersonalPlan: $e");
+      debugPrint("Error in generatePersonalPlan: $e");
     }
     return MockAiService().generatePersonalPlan(title, description, currentSkills);
   }
@@ -219,7 +224,7 @@ class GroqAiService implements AiService {
       final result = await _callAi(prompt);
       if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
-      print("Error in validateSkillRelevance: $e");
+      debugPrint("Error in validateSkillRelevance: $e");
     }
     return MockAiService().validateSkillRelevance(skill, careerInterest);
   }
@@ -230,7 +235,7 @@ class GroqAiService implements AiService {
       final result = await _callAi("Topic: $goal. Query: $prompt. Profile: ${jsonEncode(userData)}");
       return result ?? "No guidance available.";
     } catch (e) {
-      print("Error in getPersonalGuidance: $e");
+      debugPrint("Error in getPersonalGuidance: $e");
       return "Error fetching guidance.";
     }
   }
@@ -247,7 +252,7 @@ class GroqAiService implements AiService {
       final result = await _callAi(fullPrompt);
       return result ?? "I'm sorry, I couldn't process your request.";
     } catch (e) {
-      print("Error in getChatResponse: $e");
+      debugPrint("Error in getChatResponse: $e");
       return "An error occurred.";
     }
   }
@@ -255,37 +260,45 @@ class GroqAiService implements AiService {
   @override
   Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences}) async {
     try {
+      final trimmedProfile = _trimUserData(userData);
       final prefString = preferences != null ? "User Search Preferences: ${jsonEncode(preferences)}" : "";
       final prompt = """
-        User Profile: ${jsonEncode(userData)}
+        User Profile: ${jsonEncode(trimmedProfile)}
         $prefString
         
-        Provide a tiered analysis of US colleges based on the profile and the specified preferences. 
-        You MUST categorize colleges into 3 tiers based on the Common Data Set (CDS) admission standards:
-        1. "Safety/Easy": 10 colleges where the user's profile is well above the 75th percentile.
-        2. "Match/Moderate": 10 colleges where the user's profile is between the 25th and 75th percentile.
-        3. "Reach/Hard": 10 elite colleges where the user's profile is below or at the 25th percentile.
+        Provide a tiered analysis of US colleges (5 per tier). 
+        Tiers:
+        1. "Safety/Easy": 5 colleges well above 75th percentile.
+        2. "Match/Moderate": 5 colleges between 25-75th percentile.
+        3. "Reach/Hard": 5 elite colleges at/below 25th percentile.
 
-        Important: Prioritize colleges that match the user's 'subjects' of interest and 'distanceRange' or 'campusSetting' if provided in preferences.
-        If 'effortLevel' is Low, suggest more Safety options. If High, focus on high-impact Reach schools.
+        Prioritize colleges matching 'subjects', 'distanceRange', or 'campusSetting'.
+        
+        CRITICAL: Use REAL college names and locations. 
 
-        For EACH college, provide:
-        - "name", "location", "match_percentage" (Current baseline based on GPA/Scores).
-        - "match_reason" (Reference CDS data points like GPA rigor and how it aligns with their preferences).
-        - "how_to_achieve" (Specific steps).
-        - "suitable_courses" (List).
-        - "roadmap_impact": A number (1-5) representing how much completing targeted actions improves their chance.
-        - "action_value": (E.g. 5) % increase for each completed action.
-
-        Return a JSON object with keys "safety", "match", and "reach", each containing 10 colleges.
-        Also include "strengths", "weaknesses", and "top_60_roadmap" for general context.
-        Return ONLY raw JSON.
+        Return JSON with keys "safety", "match", "reach" (5 each), "strengths", "weaknesses", "top_60_roadmap".
+        Format for each college: "name", "location", "match_percentage", "match_reason", "how_to_achieve", "suitable_courses" (list), "roadmap_impact", "action_value".
       """;
 
       final result = await _callAi(prompt);
-      if (result != null) return json.decode(_stripMarkdown(result));
+      if (result != null) {
+        final cleanText = _stripMarkdown(result);
+        final decoded = json.decode(cleanText);
+        if (decoded is Map<String, dynamic>) {
+          // Ensure all required keys are present even if AI misses some
+          return {
+            "safety": decoded['safety'] ?? [],
+            "match": decoded['match'] ?? [],
+            "reach": decoded['reach'] ?? [],
+            "strengths": decoded['strengths'] ?? [],
+            "weaknesses": decoded['weaknesses'] ?? [],
+            "top_60_roadmap": decoded['top_60_roadmap'] ?? [],
+          };
+        }
+      }
     } catch (e) {
-      print("Error in getTieredCollegeSuggestions: $e");
+      debugPrint("Error in getTieredCollegeSuggestions: $e");
+      rethrow;
     }
     return {};
   }
@@ -296,24 +309,113 @@ class GroqAiService implements AiService {
       final prompt = """
         User Profile: ${jsonEncode(userData)}
         College: $collegeName
-        Analyze admission probability based on $collegeName's Common Data Set (CDS).
+        Analyze admission probability based on $collegeName's Common Data Set (CDS) and holistic review process.
         Return JSON with:
         - "name", "match_analysis", "academic_strategy", "action_plan", "chances" (Reach/Match/Safety).
         - "base_percentage": (Initial % based on profile).
-        - "suggested_extracurriculars": List of high-impact actions.
+        - "avg_gpa", "avg_sat", "avg_act": (Specific to $collegeName).
+        - "extracurricular_strategy": (Detailed advice on which activities $collegeName values most, e.g. leadership, research, service).
+        - "extracurricular_weight": (High/Medium/Low - how much they value non-academics).
+        - "suggested_extracurriculars": List of objects with "title" and "resource_link" (Provide a real helpful URL like Khan Academy, Coursera, or official research portals for each).
         - "action_value": (E.g. 5) % increase for each completed action.
         - "holistic_narrative", "cds_insight".
+        - "financial_aid_hint": (Briefly mention their aid policy, e.g. need-blind).
+        
+        CRITICAL: Ensure every single field is filled with high-quality, specific advice. Provide valid URLs for resource links.
       """;
       final result = await _callAi(prompt);
       if (result != null) return json.decode(_stripMarkdown(result));
     } catch (e) {
-      print("Error in getSpecificCollegeAdvice: $e");
+      debugPrint("Error in getSpecificCollegeAdvice: $e");
+      rethrow;
     }
     return {};
   }
 
+  @override
+  Future<List<Map<String, dynamic>>> searchCollegesByName(String query) async {
+    try {
+      final prompt = """
+        Find colleges related to the search query: "$query".
+        Return a JSON list of objects, each containing:
+        - "name": Full name of the college.
+        - "location": City, State.
+        Return at most 5 relevant results.
+        Return ONLY raw JSON.
+      """;
+      final result = await _callAi(prompt);
+      if (result != null) {
+        final List<dynamic> decoded = json.decode(_stripMarkdown(result));
+        return List<Map<String, dynamic>>.from(decoded);
+      }
+    } catch (e) {
+      debugPrint("Error in searchCollegesByName: $e");
+      rethrow;
+    }
+    return [];
+  }
+
   String _stripMarkdown(String text) {
-    return text.replaceAll('```json', '').replaceAll('```', '').trim();
+    String clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
+    return _sanitizeJson(clean);
+  }
+
+  /// Attempts to fix common JSON issues like unterminated strings or missing brackets
+  String _sanitizeJson(String jsonString) {
+    if (jsonString.isEmpty) return "{}";
+    
+    String sanitized = jsonString;
+
+    // Fix 1: Unterminated string at the end of the JSON
+    // If the string ends with a non-quote character and is inside a quote block
+    bool inQuote = false;
+    for (int i = 0; i < sanitized.length; i++) {
+      if (sanitized[i] == '"' && (i == 0 || sanitized[i - 1] != '\\')) {
+        inQuote = !inQuote;
+      }
+    }
+    if (inQuote) {
+      sanitized += '"';
+    }
+
+    // Fix 2: Missing closing brackets/braces
+    int braceCount = 0;
+    int bracketCount = 0;
+    inQuote = false;
+    for (int i = 0; i < sanitized.length; i++) {
+      if (sanitized[i] == '"' && (i == 0 || sanitized[i - 1] != '\\')) {
+        inQuote = !inQuote;
+      }
+      if (!inQuote) {
+        if (sanitized[i] == '{') braceCount++;
+        if (sanitized[i] == '}') braceCount--;
+        if (sanitized[i] == '[') bracketCount++;
+        if (sanitized[i] == ']') bracketCount--;
+      }
+    }
+
+    while (braceCount > 0) {
+      sanitized += '}';
+      braceCount--;
+    }
+    while (bracketCount > 0) {
+      sanitized += ']';
+      bracketCount--;
+    }
+
+    return sanitized;
+  }
+
+  Map<String, dynamic> _trimUserData(Map<String, dynamic> userData) {
+    return {
+      'fullName': userData['fullName'],
+      'weightedGpa': userData['weightedGpa'],
+      'satScoreRange': userData['satScoreRange'],
+      'actScoreRange': userData['actScoreRange'],
+      'skills': (userData['skills'] as List?)?.take(5).toList(),
+      'careerInterests': (userData['careerInterests'] as List?)?.take(3).toList(),
+      'notableAchievements': (userData['notableAchievements'] as List?)?.take(3).toList(),
+    };
   }
 }
 
@@ -376,39 +478,83 @@ class MockAiService implements AiService {
   @override
   Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences}) async {
     return {
-      "safety": List.generate(10, (i) => {
-        "name": "Safety College ${i + 1}",
-        "location": "Location ${i + 1}",
-        "match_percentage": 90 - i,
-        "match_reason": "Strong alignment with GPA.",
-        "how_to_achieve": "Maintain current grades.",
-        "suitable_courses": ["CS"],
-        "roadmap_impact": 3,
-        "action_value": 5
-      }),
-      "match": List.generate(10, (i) => {
-        "name": "Match College ${i + 1}",
-        "location": "Location ${i + 1}",
-        "match_percentage": 75 - i,
-        "match_reason": "Profile fits average student.",
-        "how_to_achieve": "Focus on extracurriculars.",
-        "suitable_courses": ["CS"],
-        "roadmap_impact": 4,
-        "action_value": 5
-      }),
-      "reach": List.generate(10, (i) => {
-        "name": "Reach College ${i + 1}",
-        "location": "Location ${i + 1}",
-        "match_percentage": 40 - i,
-        "match_reason": "Highly competitive admission.",
-        "how_to_achieve": "High SAT scores needed.",
-        "suitable_courses": ["CS"],
-        "roadmap_impact": 5,
-        "action_value": 5
-      }),
-      "strengths": [],
-      "weaknesses": [],
-      "top_60_roadmap": []
+      "safety": [
+        {
+          "name": "Rutgers University",
+          "location": "New Brunswick, NJ",
+          "match_percentage": 88,
+          "match_reason": "GPA is well above average for admitted students.",
+          "how_to_achieve": "Maintain current academic standing.",
+          "suitable_courses": ["Computer Science", "Engineering"],
+          "roadmap_impact": 3,
+          "action_value": 5
+        },
+        {
+          "name": "University of Maryland",
+          "location": "College Park, MD",
+          "match_percentage": 85,
+          "match_reason": "Strong alignment with extracurricular profile.",
+          "how_to_achieve": "Submit a strong early action application.",
+          "suitable_courses": ["Data Science", "Cybersecurity"],
+          "roadmap_impact": 3,
+          "action_value": 5
+        },
+      ],
+      "match": [
+        {
+          "name": "University of Michigan",
+          "location": "Ann Arbor, MI",
+          "match_percentage": 72,
+          "match_reason": "GPA and SAT scores are within the 50th percentile.",
+          "how_to_achieve": "Focus on leadership roles in clubs.",
+          "suitable_courses": ["Business Administration", "Informatics"],
+          "roadmap_impact": 4,
+          "action_value": 5
+        },
+        {
+          "name": "Georgia Institute of Technology",
+          "location": "Atlanta, GA",
+          "match_percentage": 68,
+          "match_reason": "Excellent match for STEM-focused profile.",
+          "how_to_achieve": "Highlight technical projects in essays.",
+          "suitable_courses": ["Aerospace Engineering", "AI"],
+          "roadmap_impact": 4,
+          "action_value": 5
+        },
+      ],
+      "reach": [
+        {
+          "name": "Stanford University",
+          "location": "Stanford, CA",
+          "match_percentage": 35,
+          "match_reason": "Highly selective; profile is competitive but below 75th percentile.",
+          "how_to_achieve": "Achieve exceptional SAT scores and unique projects.",
+          "suitable_courses": ["Symbolic Systems", "CS"],
+          "roadmap_impact": 5,
+          "action_value": 5
+        },
+        {
+          "name": "Harvard University",
+          "location": "Cambridge, MA",
+          "match_percentage": 30,
+          "match_reason": "Elite institution requiring exceptional holistic narrative.",
+          "how_to_achieve": "Demonstrate national-level impact in extracurriculars.",
+          "suitable_courses": ["Applied Math", "Economics"],
+          "roadmap_impact": 5,
+          "action_value": 5
+        },
+      ],
+      "strengths": [
+        {"title": "Strong Academic Foundation", "detailed_explanation": "Your GPA demonstrates consistent rigor across core subjects."}
+      ],
+      "weaknesses": [
+        {"title": "Limited Research Experience", "detailed_explanation": "Elite colleges look for independent research or high-impact projects."}
+      ],
+      "top_60_roadmap": [
+        "Complete at least 3 AP courses in junior year",
+        "Secure a leadership position in a major student organization",
+        "Begin work on a significant independent research project"
+      ]
     };
   }
 
@@ -416,13 +562,31 @@ class MockAiService implements AiService {
   Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName) async {
     return {
       "name": collegeName,
-      "match_analysis": "Your profile shows significant potential for $collegeName. Your academic record is strong, and your specific interest in AI aligns with their current research priorities. However, $collegeName is highly selective, and you will need to differentiate yourself through your personal narrative.",
-      "academic_strategy": "Prioritize AP Calculus BC and AP Physics to demonstrate maximum rigor. Aim for a 'Straight A' record in these specific subjects as they are highly weighted in $collegeName's CDS C9 section.",
-      "action_plan": "1. Focus on a capstone AI project over the next 6 months. 2. Prepare for the August SAT to hit the 1550+ mark. 3. Secure a summer internship or research assistant position.",
+      "match_analysis": "Your profile shows significant potential for $collegeName. Your academic record is strong, and your interest in AI aligns with their research priorities.",
+      "academic_strategy": "Prioritize AP Calculus BC and AP Physics to demonstrate maximum rigor. Aim for 'Straight As' in these subjects.",
+      "action_plan": "1. Focus on a capstone AI project. 2. Prepare for the SAT to hit the 1550+ mark. 3. Secure a summer internship.",
       "chances": "Reach",
-      "holistic_narrative": "Focus your application on the intersection of ethics and AI. Position yourself as a future leader who doesn't just build technology but understands its societal impact—a narrative that resonates deeply with $collegeName's mission.",
-      "suggested_extracurriculars": ["Math Olympiad", "Student Council", "Volunteering at Tech Centers"],
+      "holistic_narrative": "Focus your application on the intersection of ethics and AI. Positioning yourself as a future leader who understands societal impact.",
+      "suggested_extracurriculars": [
+        {"title": "Math Olympiad", "resource_link": "https://www.maa.org/math-competitions"},
+        {"title": "Student Council", "resource_link": "https://www.natstuco.org/"},
+        {"title": "AI Research Project", "resource_link": "https://www.edx.org/course/artificial-intelligence-ai"}
+      ],
+      "avg_gpa": 3.9,
+      "avg_sat": 1520,
+      "avg_act": 34,
+      "extracurricular_strategy": "This college values leadership and independent research highly. Focus on showing initiative.",
+      "extracurricular_weight": "High",
+      "financial_aid_hint": "Need-blind for domestic students, meets 100% of demonstrated need.",
       "cds_insight": "Extracurricular activities and character are rated 'Very Important' in their Basis for Selection (CDS C7)."
     };
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> searchCollegesByName(String query) async {
+    return [
+      {"name": "$query University", "location": "New York, NY"},
+      {"name": "Institute of $query", "location": "Boston, MA"},
+    ];
   }
 }

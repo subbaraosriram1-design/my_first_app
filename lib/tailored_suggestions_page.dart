@@ -29,7 +29,12 @@ class _TailoredSuggestionsPageState extends State<TailoredSuggestionsPage> with 
       final saved = await FirebaseService.instance.getSavedColleges(userId);
       if (mounted) {
         setState(() {
-          _savedCollegeNames.addAll(saved.map((c) => c['name'] as String));
+          for (var c in saved) {
+            final name = c['name'];
+            if (name != null) {
+              _savedCollegeNames.add(name.toString());
+            }
+          }
         });
       }
     }
@@ -40,7 +45,7 @@ class _TailoredSuggestionsPageState extends State<TailoredSuggestionsPage> with 
     if (userId == null || _isProcessing) return;
 
     setState(() => _isProcessing = true);
-    final name = college['name'] as String;
+    final name = college['name']?.toString() ?? 'Unknown College';
     final isSaved = _savedCollegeNames.contains(name);
 
     if (isSaved) {

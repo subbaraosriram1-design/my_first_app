@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'login_page.dart';
 import 'career_profile_screen.dart';
-import 'ai_insights_screen.dart';
 import 'roadmap_choice_screen.dart';
 import 'reminders_screen.dart';
 import 'events_provider.dart';
