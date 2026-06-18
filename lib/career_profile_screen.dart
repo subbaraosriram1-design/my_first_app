@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'firebase_service.dart';
 import 'placeholder_screens.dart';
 import 'login_page.dart';
@@ -19,6 +19,7 @@ class CareerProfileScreen extends StatefulWidget {
 
 class _CareerProfileScreenState extends State<CareerProfileScreen> {
   String _displayName = 'Name';
+  String _phone = '';
   String _tagline = 'Add a tagline';
   String _summary = '';
   List<dynamic> _educationList = [];
@@ -138,6 +139,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
 
         setState(() {
           _displayName = data['fullName'] ?? 'Name';
+          _phone = data['phone'] ?? '';
           _tagline = (data['tagline'] != null && data['tagline'].toString().isNotEmpty) ? data['tagline'] : 'Add a tagline';
           _summary = data['summary'] ?? '';
           _educationList = data['educationList'] ?? [];
@@ -205,18 +207,38 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
 
   Future<void> _pickVideo() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.video, allowMultiple: false);
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final int sizeInBytes = await file.length();
+      final ImagePicker picker = ImagePicker();
+      final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
+
+      if (video != null) {
+        final File file = File(video.path);
+        int sizeInBytes = await file.length();
         const int maxSizeInBytes = 5 * 1024 * 1024;
+
         if (sizeInBytes > maxSizeInBytes) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Video size must be less than 5MB', style: GoogleFonts.poppins()), backgroundColor: Colors.redAccent));
-        } else {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Video selected successfully!', style: GoogleFonts.poppins()), backgroundColor: const Color(0xFF5B3FD8)));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Video size must be less than 5MB', style: GoogleFonts.poppins()),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          }
+          return;
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Video selected successfully', style: GoogleFonts.poppins()),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
         }
       }
-    } catch (e) { debugPrint('Error picking video: $e'); }
+    } catch (e) {
+      debugPrint("Video Picker Error: $e");
+    }
   }
 
   @override
@@ -488,7 +510,14 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
           ],
         ),
         const SizedBox(width: 20),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_displayName, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A))), const SizedBox(height: 6), GestureDetector(onTap: _navigateToResumeBuilder, child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF5B3FD8).withAlpha(15), borderRadius: BorderRadius.circular(8)), child: Row(mainAxisSize: MainAxisSize.min, children: [Flexible(child: Text(_tagline, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF5B3FD8)))), const SizedBox(width: 6), const Icon(Icons.edit, size: 12, color: Color(0xFF5B3FD8))])))]))
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_displayName, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A))),
+          if (_phone.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(_phone, style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade600)),
+          ],
+          const SizedBox(height: 6),
+          GestureDetector(onTap: _navigateToResumeBuilder, child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF5B3FD8).withAlpha(15), borderRadius: BorderRadius.circular(8)), child: Row(mainAxisSize: MainAxisSize.min, children: [Flexible(child: Text(_tagline, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF5B3FD8)))), const SizedBox(width: 6), const Icon(Icons.edit, size: 12, color: Color(0xFF5B3FD8))])))]))
       ],
     );
   }
@@ -874,9 +903,27 @@ class _ProfileSectionState extends State<_ProfileSection> {
   bool _isExpanded = false;
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.05), borderRadius: BorderRadius.circular(20)),
-      child: Column(children: [ListTile(onTap: () => setState(() => _isExpanded = !_isExpanded), leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), child: Icon(widget.icon, color: const Color(0xFF10B981), size: 20)), title: Text(widget.title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A))), trailing: GestureDetector(onTap: widget.onEdit, child: Icon(widget.content == null ? Icons.add : Icons.edit_outlined, color: const Color(0xFF10B981), size: 20))), if (_isExpanded && widget.content != null) Padding(padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16), child: widget.content!)]),
+    return Material(
+      color: const Color(0xFF10B981).withValues(alpha: 0.05),
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        ListTile(
+          onTap: () => setState(() => _isExpanded = !_isExpanded), 
+          leading: Container(
+            padding: const EdgeInsets.all(8), 
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), 
+            child: Icon(widget.icon, color: const Color(0xFF10B981), size: 20)
+          ), 
+          title: Text(widget.title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A))), 
+          trailing: GestureDetector(
+            onTap: widget.onEdit, 
+            child: Icon(widget.content == null ? Icons.add : Icons.edit_outlined, color: const Color(0xFF10B981), size: 20)
+          )
+        ), 
+        if (_isExpanded && widget.content != null) 
+          Padding(padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16), child: widget.content!)
+      ]),
     );
   }
 }
