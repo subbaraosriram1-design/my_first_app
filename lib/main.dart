@@ -9,6 +9,9 @@ import 'reminders_screen.dart';
 import 'events_provider.dart';
 import 'career_hub_screen.dart';
 import 'nearby_you_screen.dart';
+import 'resume_builder_screen.dart';
+import 'ai_insights_screen.dart';
+import 'college_suggestions_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +59,9 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoginPage(),
         '/home': (context) => const MyHomePage(),
+        '/resume_builder': (context) => const ResumeBuilderPage(),
+        '/ai_insights': (context) => const AiInsightsScreen(),
+        '/suggestions': (context) => const CollegeSuggestionsScreen(),
       },
     );
   }

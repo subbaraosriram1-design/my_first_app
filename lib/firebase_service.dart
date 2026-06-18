@@ -268,7 +268,7 @@ class FirebaseService {
               'title': actionTitle,
               'isCompleted': isCompleted,
               'addedAt': DateTime.now().toIso8601String(),
-              if (actionData != null) ...actionData,
+              ...?actionData,
             };
           } else {
             roadmapActions.remove(actionTitle);

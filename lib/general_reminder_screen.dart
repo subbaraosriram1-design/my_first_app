@@ -45,6 +45,7 @@ class _GeneralReminderScreenState extends State<GeneralReminderScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (date != null) {
+      if (!mounted) return;
       final time = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.now(),

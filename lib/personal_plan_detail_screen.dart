@@ -46,7 +46,7 @@ class _PersonalPlanDetailScreenState extends State<PersonalPlanDetailScreen> {
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(context, true), 
-            child: const Text('Confirm', style: TextStyle(color: const Color(0xFF10B981)))
+            child: Text('Confirm', style: TextStyle(color: Color(0xFF10B981)))
           ),
         ],
       ),
@@ -172,23 +172,19 @@ class _PersonalPlanDetailScreenState extends State<PersonalPlanDetailScreen> {
     final bool isCompleted = status == 'Completed';
     final bool isInProgress = status == 'In Progress';
     
-    Color headerColor;
     Color iconColor;
     IconData iconData;
     String statusTitle;
 
     if (isCompleted) {
-      headerColor = const Color(0xFF10B981);
       iconColor = const Color(0xFF10B981);
       iconData = Icons.verified;
       statusTitle = 'Goal Achieved!';
     } else if (isInProgress) {
-      headerColor = const Color(0xFF3B82F6);
       iconColor = const Color(0xFF3B82F6);
       iconData = Icons.trending_up;
       statusTitle = 'Plan In Progress';
     } else {
-      headerColor = Colors.grey.shade200;
       iconColor = Colors.orange;
       iconData = Icons.lightbulb_outline;
       statusTitle = 'Plan Active';

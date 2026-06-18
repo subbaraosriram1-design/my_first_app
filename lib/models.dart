@@ -156,3 +156,61 @@ class TestScore {
         date: json['date']?.toString() ?? '',
       );
 }
+
+class WorkExperience {
+  String title;
+  String organization;
+  String location;
+  String startDate;
+  String endDate;
+  bool isCurrent;
+  String description;
+  String type; // Job, Internship, Volunteer
+
+  WorkExperience({
+    this.title = '',
+    this.organization = '',
+    this.location = '',
+    this.startDate = '',
+    this.endDate = '',
+    this.isCurrent = false,
+    this.description = '',
+    this.type = 'Job',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'organization': organization,
+        'location': location,
+        'startDate': startDate,
+        'endDate': endDate,
+        'isCurrent': isCurrent,
+        'description': description,
+        'type': type,
+      };
+
+  factory WorkExperience.fromJson(Map<String, dynamic> json) => WorkExperience(
+        title: json['title']?.toString() ?? '',
+        organization: json['organization']?.toString() ?? '',
+        location: json['location']?.toString() ?? '',
+        startDate: json['startDate']?.toString() ?? '',
+        endDate: json['endDate']?.toString() ?? '',
+        isCurrent: json['isCurrent'] ?? false,
+        description: json['description']?.toString() ?? '',
+        type: json['type']?.toString() ?? 'Job',
+      );
+}
+
+class Language {
+  String name;
+  String proficiency; // Basic, Conversational, Fluent, Native
+
+  Language({this.name = '', this.proficiency = 'Basic'});
+
+  Map<String, dynamic> toJson() => {'name': name, 'proficiency': proficiency};
+  factory Language.fromJson(Map<String, dynamic> json) => Language(
+        name: json['name']?.toString() ?? '',
+        proficiency: json['proficiency']?.toString() ?? 'Basic',
+      );
+}
+

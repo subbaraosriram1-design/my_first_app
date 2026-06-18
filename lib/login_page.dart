@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
-import 'dart:io';
 import 'firebase_service.dart';
 import 'models.dart';
 
@@ -31,6 +30,7 @@ class _LoginPageState extends State<LoginPage> {
   // Step 2: Personal Info
   String? _profileImageBase64;
   final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _taglineController = TextEditingController();
   final _summaryController = TextEditingController();
   final _dobController = TextEditingController();
@@ -174,6 +174,7 @@ class _LoginPageState extends State<LoginPage> {
       if (data != null) {
         setState(() {
           if (data['fullName'] != null) _nameController.text = data['fullName'];
+          if (data['phone'] != null) _phoneController.text = data['phone'];
           if (data['tagline'] != null) _taglineController.text = data['tagline'];
           if (data['summary'] != null) _summaryController.text = data['summary'];
           if (data['dob'] != null) _dobController.text = data['dob'];
@@ -441,6 +442,7 @@ class _LoginPageState extends State<LoginPage> {
           final resumeData = {
             'profileImage': _profileImageBase64,
             'fullName': _nameController.text,
+            'phone': _phoneController.text,
             'email': email,
             'tagline': _taglineController.text,
             'summary': _summaryController.text,
@@ -801,26 +803,24 @@ class _LoginPageState extends State<LoginPage> {
             Center(
               child: GestureDetector(
                 onTap: () async {
-                  FilePickerResult? result = await FilePicker.platform.pickFiles(
-                    type: FileType.image,
-                    withData: true, // Crucial for web and some mobile platforms to get bytes
-                  );
-                  if (result != null) {
-                    final file = result.files.single;
-                    String? base64String;
+                  try {
+                    final ImagePicker picker = ImagePicker();
+                    final XFile? image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                      maxWidth: 1000,
+                      maxHeight: 1000,
+                      imageQuality: 85,
+                    );
                     
-                    if (file.bytes != null) {
-                      base64String = base64Encode(file.bytes!);
-                    } else if (file.path != null) {
-                      final bytes = await File(file.path!).readAsBytes();
-                      base64String = base64Encode(bytes);
-                    }
-
-                    if (base64String != null) {
+                    if (image != null) {
+                      final bytes = await image.readAsBytes();
+                      final base64String = base64Encode(bytes);
                       setState(() {
                         _profileImageBase64 = base64String;
                       });
                     }
+                  } catch (e) {
+                    debugPrint("Image Picker Error: $e");
                   }
                 },
                 child: CircleAvatar(
@@ -833,6 +833,8 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             _buildTextField(_nameController, 'Full Name', Icons.person_outline),
+            const SizedBox(height: 16),
+            _buildTextField(_phoneController, 'Phone Number', Icons.phone_outlined),
             const SizedBox(height: 16),
             _buildTextField(_taglineController, 'Tagline (e.g. Student at MIT)', Icons.label_outline),
             const SizedBox(height: 16),
@@ -1506,13 +1508,10 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 16),
         _buildTextField(_gpaController, 'GPA', null, suffixText: 'Optional'),
         const SizedBox(height: 24),
-        _buildActionButton('Add Attachment', Icons.attach_file, () async {
-          FilePickerResult? result = await FilePicker.platform.pickFiles();
-          if (result != null) {
-            setState(() {
-              _eduAttachments.add(result.files.single.path!);
-            });
-          }
+        _buildActionButton('Add Attachment (Disabled)', Icons.attach_file, () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File picker is disabled.')),
+          );
         }),
         if (_eduAttachments.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -1648,13 +1647,10 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 16),
                 _buildTextField(null, 'Description', Icons.description_outlined, maxLines: 3, initialValue: project.description, onChanged: (v) => project.description = v),
                 const SizedBox(height: 12),
-                _buildActionButton('Add Attachment', Icons.attach_file, () async {
-                  FilePickerResult? result = await FilePicker.platform.pickFiles();
-                  if (result != null) {
-                    setState(() {
-                      project.attachments.add(result.files.single.path!);
-                    });
-                  }
+                _buildActionButton('Add Attachment (Disabled)', Icons.attach_file, () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('File picker is disabled.')),
+                  );
                 }),
                 if (project.attachments.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -1784,13 +1780,10 @@ class _LoginPageState extends State<LoginPage> {
           ],
         ),
         const SizedBox(height: 16),
-        _buildActionButton('Add Attachment', Icons.attach_file, () async {
-          FilePickerResult? result = await FilePicker.platform.pickFiles();
-          if (result != null) {
-            setState(() {
-              _certAttachments.add(result.files.single.path!);
-            });
-          }
+        _buildActionButton('Add Attachment (Disabled)', Icons.attach_file, () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File picker is disabled.')),
+          );
         }),
         if (_certAttachments.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -1831,6 +1824,32 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _addCurrentEducationToList() {
+    if (_schoolController.text.isNotEmpty) {
+      _educationList.add(Education(
+        level: _educationLevels[_selectedEduLevelIndex],
+        school: _schoolController.text,
+        classOf: _classOfController.text,
+        yearFrom: _yearFromController.text,
+        yearTo: _yearToController.text,
+        gradeFrom: _gradeFromController.text,
+        gradeTo: _gradeToController.text,
+        gpa: _gpaController.text,
+        isOngoing: _isEduOngoing,
+        attachments: List.from(_eduAttachments),
+      ));
+      _schoolController.clear();
+      _classOfController.clear();
+      _yearFromController.clear();
+      _yearToController.clear();
+      _gradeFromController.clear();
+      _gradeToController.clear();
+      _gpaController.clear();
+      _isEduOngoing = false;
+      _eduAttachments = [];
+    }
+  }
+
   Widget _buildMainButton() {
     if (widget.isEditMode) {
       return Column(
@@ -1840,7 +1859,10 @@ class _LoginPageState extends State<LoginPage> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () => setState(() => _signUpStep++),
+                onPressed: () {
+                  if (_signUpStep == 3) _addCurrentEducationToList();
+                  setState(() => _signUpStep++);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF5B3FD8),
                   foregroundColor: Colors.white,
@@ -1877,7 +1899,10 @@ class _LoginPageState extends State<LoginPage> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: _submit,
+        onPressed: () {
+          if (!_isLogin && _signUpStep == 3) _addCurrentEducationToList();
+          _submit();
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF5B3FD8),
           foregroundColor: Colors.white,
@@ -1900,11 +1925,13 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _saveAndClose() async {
     final userId = FirebaseService.instance.currentUserId;
     if (userId != null) {
+      if (_signUpStep == 3) _addCurrentEducationToList();
       setState(() => _isProcessing = true);
       try {
         final resumeData = {
           'profileImage': _profileImageBase64,
           'fullName': _nameController.text,
+          'phone': _phoneController.text,
           'tagline': _taglineController.text,
           'summary': _summaryController.text,
           'dob': _dobController.text,
@@ -2076,11 +2103,15 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildCard({required String title, required String subtitle, required VoidCallback onDelete}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        title: Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: Text(subtitle, style: GoogleFonts.poppins(fontSize: 12)),
-        trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20), onPressed: onDelete),
+      child: Material(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          title: Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
+          subtitle: Text(subtitle, style: GoogleFonts.poppins(fontSize: 12)),
+          trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20), onPressed: onDelete),
+        ),
       ),
     );
   }

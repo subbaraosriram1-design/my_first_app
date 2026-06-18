@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'firebase_service.dart';
-import 'ai_insights_screen.dart';
 import 'notification_service.dart';
 import 'reminder_detail_screen.dart';
-import 'college_suggestions_screen.dart';
 
 class PlaceholderPage extends StatelessWidget {
   final String title;
@@ -624,7 +622,7 @@ class _MenuPageState extends State<MenuPage> {
                   _buildMenuItem(Icons.people_outline, 'Manage roles'),
                   _buildMenuItem(Icons.smart_toy_outlined, 'AI Insights'),
                   _buildMenuItem(Icons.school_outlined, 'Suggestions'),
-                  _buildMenuItem(Icons.mail_outline, 'Invite friends & earn'),
+                  _buildMenuItem(Icons.description_outlined, 'Build Resume'),
                   _buildMenuItem(Icons.verified_user_outlined, 'Privacy policy'),
                   _buildMenuItem(Icons.info_outline, 'About spikeview'),
                   _buildMenuItem(Icons.logout, 'Sign out', isDestructive: true),
@@ -668,15 +666,11 @@ class _MenuPageState extends State<MenuPage> {
               Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
             }
           } else if (title == 'AI Insights') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const AiInsightsScreen()),
-            );
+            Navigator.pushNamed(context, '/ai_insights');
           } else if (title == 'Suggestions') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CollegeSuggestionsScreen()),
-            );
+            Navigator.pushNamed(context, '/suggestions');
+          } else if (title == 'Build Resume') {
+            Navigator.pushNamed(context, '/resume_builder');
           } else {
             // Placeholder for other menu items
           }

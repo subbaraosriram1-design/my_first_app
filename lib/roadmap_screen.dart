@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ai_service.dart';
 import 'firebase_service.dart';
@@ -180,21 +179,10 @@ class _RoadmapScreenState extends State<RoadmapScreen> {
   }
 
   Future<void> _uploadAttachment(String resourceLink) async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
-    if (result != null) {
-      final skillProgress = Map<String, dynamic>.from(_userProgress[widget.skill] ?? {});
-      List completed = List.from(skillProgress['completedResources'] ?? []);
-      
-      for (var res in completed) {
-        if (res['link'] == resourceLink) {
-          res['attachment'] = result.files.single.name; // In a real app, upload file to storage
-        }
-      }
-      
-      skillProgress['completedResources'] = completed;
-      _userProgress[widget.skill] = skillProgress;
-      await FirebaseService.instance.saveResume(FirebaseService.instance.currentUserId!, {'resourceProgress': _userProgress});
-      setState(() {});
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File uploading is currently disabled.')),
+      );
     }
   }
 

@@ -84,6 +84,8 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
           ]);
         }
 
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Focus updated! Your analysis and roadmap are now optimized for $interest.'),
