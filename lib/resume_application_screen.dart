@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:printing/printing.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'firebase_service.dart';
 import 'resume_template_manager.dart';
+import 'models.dart';
 
 class ResumeApplicationScreen extends StatefulWidget {
   const ResumeApplicationScreen({super.key});

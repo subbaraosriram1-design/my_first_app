@@ -748,6 +748,16 @@ class _EducationViewPageState extends State<EducationViewPage> {
     if (result == true) _loadData();
   }
 
+  // Helper method to safely format year suffix (last 2 digits)
+  String _formatYearSuffix(dynamic year) {
+    if (year == null) return '??';
+    String s = year.toString().trim();
+    if (s.isEmpty) return '??';
+    if (s.toLowerCase() == 'present') return 'Pres';
+    if (s.length < 2) return s;
+    return s.substring(s.length - 2);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -799,7 +809,7 @@ class _EducationViewPageState extends State<EducationViewPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              edu != null ? '${edu['yearFrom']}-${edu['yearTo']?.toString().substring(edu['yearTo'].toString().length - 2)}' : 'TBD',
+                              edu != null ? '${edu['yearFrom']}-${_formatYearSuffix(edu['yearTo'])}' : 'TBD',
                               style: GoogleFonts.poppins(
                                 color: edu != null ? Colors.white : Colors.grey.shade50,
                                 fontSize: 12,

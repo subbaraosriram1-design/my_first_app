@@ -114,17 +114,29 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
     if (controller.text.isEmpty) return;
     setState(() => isSummary ? _isOptimizingSummary = true : _isOptimizingObjective = true);
     try {
-      final prompt = "Optimize this $fieldName for a resume to make it more impactful and professional: ${controller.text}. Return only the optimized text.";
+      final lengthInstruction = isSummary 
+          ? "The summary should be comprehensive and detailed, aiming for approximately 600-800 characters." 
+          : "The objective should be concise and impactful (2-3 sentences).";
+          
+      final prompt = """
+        Optimize this $fieldName for a resume to make it more impactful and professional: 
+        "${controller.text}"
+        
+        $lengthInstruction
+        
+        Return ONLY the optimized text. No preamble, no quotes, no labels like 'Optimized Summary:'.
+      """;
+      
       final optimized = await _aiService.getPersonalGuidance("Resume Optimization", prompt, {});
       setState(() {
-        controller.text = optimized.trim();
+        controller.text = optimized.replaceAll('"', '').trim();
       });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("AI optimization failed: $e")));
       }
     } finally {
-      setState(() => isSummary ? _isOptimizingSummary = false : _isOptimizingObjective = false);
+      if (mounted) setState(() => isSummary ? _isOptimizingSummary = false : _isOptimizingObjective = false);
     }
   }
 
@@ -257,9 +269,9 @@ class _ResumeBuilderPageState extends State<ResumeBuilderPage> {
               _buildSectionTitle('Professional Summary'),
               _buildTextField(
                 _summaryController, 
-                'Write a short professional summary...', 
+                'Write a professional summary (up to 1000 characters)...', 
                 Icons.description_outlined, 
-                maxLines: 4,
+                maxLines: 8,
                 suffixIcon: IconButton(
                   icon: _isOptimizingSummary 
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))

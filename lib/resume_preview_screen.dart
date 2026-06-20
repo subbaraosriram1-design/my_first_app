@@ -20,7 +20,9 @@ import 'resume_templates/academic_cv_renderer.dart';
 import 'resume_templates/elegant_renderer.dart';
 import 'resume_templates/harshibar_renderer.dart';
 import 'resume_templates/northeastern_renderer.dart';
-// Removed custom renderer import
+import 'resume_templates/custom_template_renderer.dart';
+import 'resume_template_manager.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ResumePreviewScreen extends StatefulWidget {
   final Map<String, dynamic> resumeData;
@@ -105,6 +107,10 @@ class _ResumePreviewScreenState extends State<ResumePreviewScreen> {
         await NortheasternRenderer.render(pdf, format, widget.resumeData, fonts);
         break;
       case 'Custom':
+        await CustomTemplateRenderer.render(pdf, format, widget.resumeData, fonts);
+        break;
+      case 'CustomDocx':
+        // CustomDocx is handled separately in the UI
         await AltaCVRenderer.render(pdf, format, widget.resumeData, fonts);
         break;
       default:
@@ -116,6 +122,22 @@ class _ResumePreviewScreenState extends State<ResumePreviewScreen> {
   }
 
   Future<void> _saveAsPdf() async {
+    if (widget.templateName == 'CustomDocx') {
+      final docxBytes = await ResumeTemplateManager.instance.generateFilledDocx(widget.resumeData);
+      if (docxBytes == null) return;
+      
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/resume_custom.docx');
+      await file.writeAsBytes(docxBytes);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('DOCX Saved to: ${file.path}')),
+        );
+      }
+      return;
+    }
+
     final pdfBytes = await _generatePdf(PdfPageFormat.a4);
     final directory = await getApplicationDocumentsDirectory();
     final file = File('${directory.path}/resume_${widget.templateName.replaceAll(' ', '_')}.pdf');
@@ -131,6 +153,64 @@ class _ResumePreviewScreenState extends State<ResumePreviewScreen> {
   @override
   Widget build(BuildContext context) {
     String titleText = widget.templateName == 'Custom' ? 'Custom Layout' : widget.templateName;
+    
+    if (widget.templateName == 'CustomDocx') {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Preview: Custom DOCX', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.download),
+              onPressed: _saveAsPdf,
+              tooltip: 'Download DOCX',
+            ),
+            IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: () async {
+                final docxBytes = await ResumeTemplateManager.instance.generateFilledDocx(widget.resumeData);
+                if (docxBytes != null) {
+                  final directory = await getTemporaryDirectory();
+                  final file = File('${directory.path}/resume.docx');
+                  await file.writeAsBytes(docxBytes);
+                  await Share.shareXFiles([XFile(file.path)], text: 'My Resume');
+                }
+              },
+            ),
+          ],
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.description, size: 80, color: Color(0xFF5B3FD8)),
+              const SizedBox(height: 24),
+              Text(
+                'Your custom DOCX template is ready!',
+                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'PDF preview is not available for custom DOCX files.',
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: _saveAsPdf,
+                icon: const Icon(Icons.download),
+                label: const Text('Download Filled DOCX'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF5B3FD8),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Preview: $titleText', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),

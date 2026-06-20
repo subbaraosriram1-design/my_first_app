@@ -22,18 +22,21 @@ abstract class AiService {
   Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName);
   Future<Map<String, dynamic>> getTargetActionPlan(String collegeName, String actionTitle, Map<String, dynamic> userData);
   Future<List<Map<String, dynamic>>> searchCollegesByName(String query);
+  Future<String> generateHtmlResume(String base64Image, Map<String, dynamic> userData);
+  Future<Map<String, dynamic>> analyzeDocxTemplate(String text);
+  Future<Map<String, dynamic>> analyzeAndFillTemplate(String base64Image, Map<String, dynamic> userData);
 }
 
 /// Implementation using Groq
 class GroqAiService implements AiService {
   
-  Future<String?> _callAi(String prompt) async {
+  Future<String?> _callAi(String prompt, {String? base64Image}) async {
     String? apiKey;
 
     if (ApiConfig.useHardcodedKey) {
       apiKey = ApiConfig.apiKey;
     } else {
-      apiKey = await FirebaseService.instance.getGrokApiKey(); // Keeping the method name or update it
+      apiKey = await FirebaseService.instance.getGrokApiKey(); 
     }
     
     if (apiKey == null || apiKey.isEmpty) {
@@ -42,6 +45,19 @@ class GroqAiService implements AiService {
     }
 
     try {
+      final List<Map<String, dynamic>> userMessageContent = [
+        {"type": "text", "text": prompt}
+      ];
+
+      if (base64Image != null) {
+        userMessageContent.add({
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/jpeg;base64,$base64Image"
+          }
+        });
+      }
+
       final response = await http.post(
         Uri.parse(ApiConfig.baseUrl),
         headers: {
@@ -53,19 +69,17 @@ class GroqAiService implements AiService {
           "messages": [
             {
               "role": "system", 
-              "content": "You are a professional, extremely polite, and encouraging career guidance assistant. "
-                         "Always use a positive tone. Your goal is to inspire and motivate the user. "
-                         "When you see their accomplishments, praise them warmly. "
-                         "Never be demotivating. "
-                         "IMPORTANT: When JSON is requested, return ONLY valid JSON. "
-                         "Ensure all strings are properly closed and all brackets match. "
-                         "Do not include any text before or after the JSON block."
+              "content": "You are a professional resume designer and career consultant. "
+                         "When an image is provided, it is a template for reference. "
+                         "Analyze its layout, fonts, and style precisely. "
+                         "Return only valid JSON or HTML as requested. "
+                         "Do not include any text before or after the code block."
             },
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": userMessageContent}
           ],
-          "temperature": 0.7,
+          "temperature": 0.1, // Lower temperature for more precise layout recreation
         }),
-      ).timeout(const Duration(seconds: 25));
+      ).timeout(const Duration(seconds: 45));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -233,8 +247,12 @@ class GroqAiService implements AiService {
   @override
   Future<String> getPersonalGuidance(String goal, String prompt, Map<String, dynamic> userData) async {
     try {
-      final result = await _callAi("Topic: $goal. Query: $prompt. Profile: ${jsonEncode(userData)}");
-      return result ?? "No guidance available.";
+      final String contextPrompt = goal == "Resume Optimization" 
+          ? "$prompt\nCRITICAL: Return ONLY the optimized text. Do not include labels like 'Result:', 'Optimized Summary:', or any introductory/concluding remarks. Just the text itself."
+          : "Topic: $goal. Query: $prompt. Profile: ${jsonEncode(userData)}";
+          
+      final result = await _callAi(contextPrompt);
+      return result?.trim() ?? "No guidance available.";
     } catch (e) {
       debugPrint("Error in getPersonalGuidance: $e");
       return "Error fetching guidance.";
@@ -286,7 +304,6 @@ class GroqAiService implements AiService {
         final cleanText = _stripMarkdown(result);
         final decoded = json.decode(cleanText);
         if (decoded is Map<String, dynamic>) {
-          // Ensure all required keys are present even if AI misses some
           return {
             "safety": decoded['safety'] ?? [],
             "match": decoded['match'] ?? [],
@@ -311,18 +328,7 @@ class GroqAiService implements AiService {
         User Profile: ${jsonEncode(userData)}
         College: $collegeName
         Analyze admission probability based on $collegeName's Common Data Set (CDS) and holistic review process.
-        Return JSON with:
-        - "name", "match_analysis", "academic_strategy", "action_plan", "chances" (Reach/Match/Safety).
-        - "base_percentage": (Initial % based on profile).
-        - "avg_gpa", "avg_sat", "avg_act": (Specific to $collegeName).
-        - "extracurricular_strategy": (Detailed advice on which activities $collegeName values most, e.g. leadership, research, service).
-        - "extracurricular_weight": (High/Medium/Low - how much they value non-academics).
-        - "suggested_extracurriculars": List of objects with "title", "suggestion", and "resource_link" (Provide a real helpful URL like Khan Academy, Coursera, or official research portals for each. The suggestion should explain HOW this specific activity helps for $collegeName).
-        - "action_value": (E.g. 5) % increase for each completed action.
-        - "holistic_narrative", "cds_insight".
-        - "financial_aid_hint": (Briefly mention their aid policy, e.g. need-blind).
-        
-        CRITICAL: Ensure every single field is filled with high-quality, specific advice. Provide valid URLs for resource links.
+        Return JSON with fields like name, chances, match_analysis, etc.
       """;
       final result = await _callAi(prompt);
       if (result != null) return json.decode(_stripMarkdown(result));
@@ -338,23 +344,15 @@ class GroqAiService implements AiService {
     return {
       "title": actionTitle,
       "overview": "Detailed strategy for $actionTitle at $collegeName.",
-      "steps": ["Step 1: Research requirements", "Step 2: Create a timeline", "Step 3: Execute and document"],
-      "google_search_link": "https://www.google.com/search?q=$actionTitle+for+$collegeName",
-      "youtube_search_link": "https://www.youtube.com/results?search_query=$actionTitle+guide"
+      "steps": ["Step 1: Research requirements", "Step 2: Create a timeline"],
+      "google_search_link": "https://www.google.com/search?q=$actionTitle+for+$collegeName"
     };
   }
 
   @override
   Future<List<Map<String, dynamic>>> searchCollegesByName(String query) async {
     try {
-      final prompt = """
-        Find colleges related to the search query: "$query".
-        Return a JSON list of objects, each containing:
-        - "name": Full name of the college.
-        - "location": City, State.
-        Return at most 5 relevant results.
-        Return ONLY raw JSON.
-      """;
+      final prompt = "Search colleges for $query. Return JSON list with name and location.";
       final result = await _callAi(prompt);
       if (result != null) {
         final List<dynamic> decoded = json.decode(_stripMarkdown(result));
@@ -362,9 +360,77 @@ class GroqAiService implements AiService {
       }
     } catch (e) {
       debugPrint("Error in searchCollegesByName: $e");
-      rethrow;
     }
     return [];
+  }
+
+  @override
+  Future<String> generateHtmlResume(String base64Image, Map<String, dynamic> userData) async {
+    try {
+      final prompt = """
+        ACT AS A SENIOR WEB DEVELOPER & RESUME DESIGNER.
+        
+        TASK:
+        I have attached an image of a resume template. Analyze its structure, fonts, colors, and layout.
+        Recreate this design perfectly using clean HTML and CSS.
+        
+        Fill the design with this user data:
+        ${jsonEncode(userData)}
+
+        CONSTRAINTS:
+        1. Output ONLY a single HTML file with internal CSS.
+        2. DO NOT use background images; recreate the layout with HTML/CSS.
+        3. Match the visual hierarchy of the attached template exactly.
+        4. If user data is missing a section that exists in the template, generate professional placeholders.
+        5. Output only the code.
+        6. Create same style in provided in attachemnt
+      """;
+      
+      final result = await _callAi(prompt, base64Image: base64Image);
+      return _extractHtml(result ?? "<html><body>Error generating resume</body></html>");
+    } catch (e) {
+      debugPrint("Error in generateHtmlResume: $e");
+      return "<html><body>Exception: $e</body></html>";
+    }
+  }
+
+  String _extractHtml(String text) {
+    if (text.contains("<!DOCTYPE html>") || text.contains("<html")) {
+      final start = text.indexOf("<!DOCTYPE html>");
+      final startAlt = text.indexOf("<html");
+      final startIndex = (start != -1 && (start < startAlt || startAlt == -1)) ? start : startAlt;
+      
+      final end = text.lastIndexOf("</html>");
+      if (startIndex != -1 && end != -1) {
+        return text.substring(startIndex, end + 7);
+      }
+    }
+    return text.replaceAll("```html", "").replaceAll("```", "").trim();
+  }
+
+  @override
+  Future<Map<String, dynamic>> analyzeDocxTemplate(String text) async {
+    try {
+      final prompt = """
+        Identify placeholders (like [NAME], [EMAIL], etc.) in this text:
+        $text
+        Return ONLY a JSON mapping of field names to the exact placeholders found.
+      """;
+      final result = await _callAi(prompt);
+      if (result != null) return json.decode(_stripMarkdown(result));
+    } catch (e) {
+      debugPrint("Error in analyzeDocxTemplate: $e");
+    }
+    return {
+      "fullName": "[NAME]",
+      "email": "[EMAIL]",
+      "phone": "[PHONE]"
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> analyzeAndFillTemplate(String base64Image, Map<String, dynamic> userData) async {
+    return {};
   }
 
   String _stripMarkdown(String text) {
@@ -372,32 +438,19 @@ class GroqAiService implements AiService {
     return _sanitizeJson(clean);
   }
 
-  /// Attempts to fix common JSON issues like unterminated strings or missing brackets
   String _sanitizeJson(String jsonString) {
     if (jsonString.isEmpty) return "{}";
-    
     String sanitized = jsonString;
-
-    // Fix 1: Unterminated string at the end of the JSON
-    // If the string ends with a non-quote character and is inside a quote block
     bool inQuote = false;
     for (int i = 0; i < sanitized.length; i++) {
-      if (sanitized[i] == '"' && (i == 0 || sanitized[i - 1] != '\\')) {
-        inQuote = !inQuote;
-      }
+      if (sanitized[i] == '"' && (i == 0 || sanitized[i - 1] != '\\')) inQuote = !inQuote;
     }
-    if (inQuote) {
-      sanitized += '"';
-    }
-
-    // Fix 2: Missing closing brackets/braces
+    if (inQuote) sanitized += '"';
     int braceCount = 0;
     int bracketCount = 0;
     inQuote = false;
     for (int i = 0; i < sanitized.length; i++) {
-      if (sanitized[i] == '"' && (i == 0 || sanitized[i - 1] != '\\')) {
-        inQuote = !inQuote;
-      }
+      if (sanitized[i] == '"' && (i == 0 || sanitized[i - 1] != '\\')) inQuote = !inQuote;
       if (!inQuote) {
         if (sanitized[i] == '{') braceCount++;
         if (sanitized[i] == '}') braceCount--;
@@ -405,16 +458,8 @@ class GroqAiService implements AiService {
         if (sanitized[i] == ']') bracketCount--;
       }
     }
-
-    while (braceCount > 0) {
-      sanitized += '}';
-      braceCount--;
-    }
-    while (bracketCount > 0) {
-      sanitized += ']';
-      bracketCount--;
-    }
-
+    while (braceCount > 0) { sanitized += '}'; braceCount--; }
+    while (bracketCount > 0) { sanitized += ']'; bracketCount--; }
     return sanitized;
   }
 
@@ -422,206 +467,46 @@ class GroqAiService implements AiService {
     return {
       'fullName': userData['fullName'],
       'weightedGpa': userData['weightedGpa'],
-      'satScoreRange': userData['satScoreRange'],
-      'actScoreRange': userData['actScoreRange'],
       'skills': (userData['skills'] as List?)?.take(5).toList(),
-      'careerInterests': (userData['careerInterests'] as List?)?.take(3).toList(),
-      'notableAchievements': (userData['notableAchievements'] as List?)?.take(3).toList(),
     };
   }
 }
 
 class MockAiService implements AiService {
   @override
-  Future<Map<String, dynamic>> getNextSteps(List<String> skills, List<String> interests) async {
-    return {'suggestion': 'Portfolio focus', 'course': 'DSA', 'project': 'Finance Tracker'};
-  }
-
+  Future<Map<String, dynamic>> getNextSteps(List<String> skills, List<String> interests) async => {};
   @override
-  Future<List<Map<String, String>>> getCareerTrajectory(List<String> skills) async {
-    return [{'stage': 'Early', 'role': 'Junior Dev'}, {'stage': 'Mid', 'role': 'Senior Dev'}];
-  }
-
+  Future<List<Map<String, String>>> getCareerTrajectory(List<String> skills) async => [];
   @override
-  Future<String> generateSummary(Map<String, dynamic> userData) async {
-    return 'Ambitious student.';
-  }
-
+  Future<String> generateSummary(Map<String, dynamic> userData) async => "";
   @override
-  Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer) async {
-    return {"achievements": "Solid foundation!", "steps": [], "timeline": "5 weeks", "required_skills": []};
-  }
-
+  Future<Map<String, dynamic>> getDetailedCareerPlan(Map<String, dynamic> userData, String targetCareer) async => {};
   @override
-  Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext) async {
-    return {"description": "Mastering $skill", "trainings": [], "youtube": [], "docs": []};
-  }
-
+  Future<Map<String, dynamic>> getSkillResources(String skill, String careerContext) async => {};
   @override
-  Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest) async {
-    return {"strengths": [], "opportunities": [], "closing_thought": "Success awaits!"};
-  }
-
+  Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest) async => {};
   @override
-  Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category) async {
-    return [];
-  }
-
+  Future<List<Map<String, dynamic>>> getNearbyRecommendations(Map<String, dynamic> userData, String category) async => [];
   @override
-  Future<Map<String, dynamic>> generatePersonalPlan(String title, String description, List<String> currentSkills, {DateTime? targetCompletionDate}) async {
-    return {"strengths": "Foundation", "negatives": "Time", "steps": [], "references": []};
-  }
-
+  Future<Map<String, dynamic>> generatePersonalPlan(String title, String description, List<String> currentSkills, {DateTime? targetCompletionDate}) async => {};
   @override
-  Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest) async {
-    return {'is_relevant': true, 'connection_type': 'Direct', 'explanation': 'Highly relevant.'};
-  }
-
+  Future<Map<String, dynamic>> validateSkillRelevance(String skill, String careerInterest) async => {};
   @override
-  Future<String> getPersonalGuidance(String goal, String prompt, Map<String, dynamic> userData) async {
-    return "Focus on practice.";
-  }
-
+  Future<String> getPersonalGuidance(String goal, String prompt, Map<String, dynamic> userData) async => "";
   @override
-  Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData) async {
-    return "Explore certifications.";
-  }
-
+  Future<String> getChatResponse(String userMessage, Map<String, dynamic> userData) async => "";
   @override
-  Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences}) async {
-    return {
-      "safety": [
-        {
-          "name": "Rutgers University",
-          "location": "New Brunswick, NJ",
-          "match_percentage": 88,
-          "match_reason": "GPA is well above average for admitted students.",
-          "how_to_achieve": "Maintain current academic standing.",
-          "suitable_courses": ["Computer Science", "Engineering"],
-          "roadmap_impact": 3,
-          "action_value": 5
-        },
-        {
-          "name": "University of Maryland",
-          "location": "College Park, MD",
-          "match_percentage": 85,
-          "match_reason": "Strong alignment with extracurricular profile.",
-          "how_to_achieve": "Submit a strong early action application.",
-          "suitable_courses": ["Data Science", "Cybersecurity"],
-          "roadmap_impact": 3,
-          "action_value": 5
-        },
-      ],
-      "match": [
-        {
-          "name": "University of Michigan",
-          "location": "Ann Arbor, MI",
-          "match_percentage": 72,
-          "match_reason": "GPA and SAT scores are within the 50th percentile.",
-          "how_to_achieve": "Focus on leadership roles in clubs.",
-          "suitable_courses": ["Business Administration", "Informatics"],
-          "roadmap_impact": 4,
-          "action_value": 5
-        },
-        {
-          "name": "Georgia Institute of Technology",
-          "location": "Atlanta, GA",
-          "match_percentage": 68,
-          "match_reason": "Excellent match for STEM-focused profile.",
-          "how_to_achieve": "Highlight technical projects in essays.",
-          "suitable_courses": ["Aerospace Engineering", "AI"],
-          "roadmap_impact": 4,
-          "action_value": 5
-        },
-      ],
-      "reach": [
-        {
-          "name": "Stanford University",
-          "location": "Stanford, CA",
-          "match_percentage": 35,
-          "match_reason": "Highly selective; profile is competitive but below 75th percentile.",
-          "how_to_achieve": "Achieve exceptional SAT scores and unique projects.",
-          "suitable_courses": ["Symbolic Systems", "CS"],
-          "roadmap_impact": 5,
-          "action_value": 5
-        },
-        {
-          "name": "Harvard University",
-          "location": "Cambridge, MA",
-          "match_percentage": 30,
-          "match_reason": "Elite institution requiring exceptional holistic narrative.",
-          "how_to_achieve": "Demonstrate national-level impact in extracurriculars.",
-          "suitable_courses": ["Applied Math", "Economics"],
-          "roadmap_impact": 5,
-          "action_value": 5
-        },
-      ],
-      "strengths": [
-        {"title": "Strong Academic Foundation", "detailed_explanation": "Your GPA demonstrates consistent rigor across core subjects."}
-      ],
-      "weaknesses": [
-        {"title": "Limited Research Experience", "detailed_explanation": "Elite colleges look for independent research or high-impact projects."}
-      ],
-      "top_60_roadmap": [
-        "Complete at least 3 AP courses in junior year",
-        "Secure a leadership position in a major student organization",
-        "Begin work on a significant independent research project"
-      ]
-    };
-  }
-
+  Future<Map<String, dynamic>> getTieredCollegeSuggestions(Map<String, dynamic> userData, {Map<String, dynamic>? preferences}) async => {};
   @override
-  Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName) async {
-    return {
-      "name": collegeName,
-      "match_analysis": "Your profile shows significant potential for $collegeName. Your academic record is strong, and your interest in AI aligns with their research priorities.",
-      "academic_strategy": "Prioritize AP Calculus BC and AP Physics to demonstrate maximum rigor. Aim for 'Straight As' in these subjects.",
-      "action_plan": "1. Focus on a capstone AI project. 2. Prepare for the SAT to hit the 1550+ mark. 3. Secure a summer internship.",
-      "chances": "Reach",
-      "holistic_narrative": "Focus your application on the intersection of ethics and AI. Positioning yourself as a future leader who understands societal impact.",
-      "suggested_extracurriculars": [
-        {
-          "title": "Math Olympiad", 
-          "suggestion": "Participating in high-level math competitions demonstrates the quantitative rigor $collegeName looks for in STEM applicants.",
-          "resource_link": "https://www.maa.org/math-competitions"
-        },
-        {
-          "title": "Student Council", 
-          "suggestion": "Leadership roles are critical for $collegeName's holistic review. This shows you can lead and influence your community.",
-          "resource_link": "https://www.natstuco.org/"
-        },
-        {
-          "title": "AI Research Project", 
-          "suggestion": "Independent research projects show intellectual curiosity and initiative, setting you apart from other high-achieving students.",
-          "resource_link": "https://www.edx.org/course/artificial-intelligence-ai"
-        }
-      ],
-      "avg_gpa": 3.9,
-      "avg_sat": 1520,
-      "avg_act": 34,
-      "extracurricular_strategy": "This college values leadership and independent research highly. Focus on showing initiative.",
-      "extracurricular_weight": "High",
-      "financial_aid_hint": "Need-blind for domestic students, meets 100% of demonstrated need.",
-      "cds_insight": "Extracurricular activities and character are rated 'Very Important' in their Basis for Selection (CDS C7)."
-    };
-  }
-
+  Future<Map<String, dynamic>> getSpecificCollegeAdvice(Map<String, dynamic> userData, String collegeName) async => {};
   @override
-  Future<Map<String, dynamic>> getTargetActionPlan(String collegeName, String actionTitle, Map<String, dynamic> userData) async {
-    return {
-      "title": actionTitle,
-      "overview": "Detailed strategy for $actionTitle at $collegeName.",
-      "steps": ["Step 1: Research requirements", "Step 2: Create a timeline", "Step 3: Execute and document"],
-      "google_search_link": "https://www.google.com/search?q=$actionTitle+for+$collegeName",
-      "youtube_search_link": "https://www.youtube.com/results?search_query=$actionTitle+guide"
-    };
-  }
-
+  Future<Map<String, dynamic>> getTargetActionPlan(String collegeName, String actionTitle, Map<String, dynamic> userData) async => {};
   @override
-  Future<List<Map<String, dynamic>>> searchCollegesByName(String query) async {
-    return [
-      {"name": "$query University", "location": "New York, NY"},
-      {"name": "Institute of $query", "location": "Boston, MA"},
-    ];
-  }
+  Future<List<Map<String, dynamic>>> searchCollegesByName(String query) async => [];
+  @override
+  Future<Map<String, dynamic>> analyzeAndFillTemplate(String base64Image, Map<String, dynamic> userData) async => {};
+  @override
+  Future<Map<String, dynamic>> analyzeDocxTemplate(String text) async => {};
+  @override
+  Future<String> generateHtmlResume(String base64Image, Map<String, dynamic> userData) async => "";
 }

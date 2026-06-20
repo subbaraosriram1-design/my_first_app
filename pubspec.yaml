@@ -30,6 +30,12 @@ dependencies:
   path_provider: ^2.1.5
   permission_handler: ^11.3.1
   cached_network_image: ^3.4.1
+  file_picker: ^11.0.2
+  docx_template: ^0.4.0
+  docx_to_text: ^1.0.1
+  share_plus: ^10.1.4
+  flutter_html: ^3.0.0-beta.2
+  flutter_widget_from_html: ^0.10.0
 
 dev_dependencies:
   flutter_test:

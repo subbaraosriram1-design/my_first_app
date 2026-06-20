@@ -214,3 +214,25 @@ class Language {
       );
 }
 
+class ResumeData {
+  String fullName;
+  String email;
+  String tagline;
+  String contact;
+  // ... other fields can be added as needed by resume_application_screen
+
+  ResumeData({
+    this.fullName = '',
+    this.email = '',
+    this.tagline = '',
+    this.contact = '',
+  });
+
+  factory ResumeData.fromFirestore(Map<String, dynamic> json) => ResumeData(
+        fullName: json['fullName']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+        tagline: json['tagline']?.toString() ?? '',
+        contact: json['phone']?.toString() ?? '',
+      );
+}
+
