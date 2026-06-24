@@ -26,6 +26,13 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
+      - name: Create dummy firebase_options if missing
+        run: |
+          if (!(Test-Path lib/firebase_options.dart)) {
+            echo "class DefaultFirebaseOptions { static const currentPlatform = null; }" > lib/firebase_options.dart
+          }
+        shell: pwsh
+
       - name: Build Windows
         run: flutter build windows --release
 
