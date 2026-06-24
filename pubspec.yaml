@@ -36,11 +36,12 @@ dependencies:
   share_plus: ^10.1.4
   flutter_html: ^3.0.0-beta.2
   flutter_widget_from_html: ^0.10.0
+  sqflite_common_ffi: ^2.3.3
+  sqlite3_flutter_libs: ^0.5.24
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  sqflite_common_ffi: ^2.3.3
   flutter_lints: ^6.0.0
 
 flutter:

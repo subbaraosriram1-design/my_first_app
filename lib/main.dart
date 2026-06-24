@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'dart:io' show Platform;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite/sqflite.dart';
 import 'login_page.dart';
 import 'career_profile_screen.dart';
 import 'roadmap_choice_screen.dart';
@@ -16,6 +19,12 @@ import 'college_suggestions_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  if (Platform.isWindows || Platform.isLinux) {
+    // Initialize FFI
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
   try {
     debugPrint('Initializing Firebase...');
     await Firebase.initializeApp();
