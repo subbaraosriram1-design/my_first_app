@@ -30,8 +30,9 @@ class DatabaseHelper {
       );
     } catch (e) {
       debugPrint('SQLite Initialization Error: $e');
-      if (e.toString().contains('sqlite_c_ffi_not_found')) {
-        debugPrint('MAC/LINUX DESKTOP ERROR: You need sqflite_common_ffi and databaseFactory initialization in main.dart');
+      if (e.toString().contains('sqlite_c_ffi_not_found') || e.toString().contains('sqlite3.dll')) {
+        debugPrint('SQLITE ERROR: The required sqlite3 native library was not found.');
+        debugPrint('On Windows, ensure sqlite3.dll is in the same folder as your .exe');
       }
       rethrow;
     }

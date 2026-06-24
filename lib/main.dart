@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, File;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite/sqflite.dart';
+import 'firebase_options.dart';
 import 'login_page.dart';
 import 'career_profile_screen.dart';
 import 'roadmap_choice_screen.dart';
@@ -19,7 +19,24 @@ import 'college_suggestions_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  if (Platform.isWindows || Platform.isLinux) {
+  if (Platform.isWindows) {
+    // Check for essential DLLs on Windows
+    final exePath = Platform.resolvedExecutable;
+    final exeDir = File(exePath).parent.path;
+    
+    final essentialDlls = ['pdfium.dll', 'sqlite3.dll', 'flutter_windows.dll'];
+    for (final dll in essentialDlls) {
+      final dllFile = File('$exeDir/$dll');
+      if (!dllFile.existsSync()) {
+        debugPrint('CRITICAL WARNING: $dll not found in $exeDir');
+        debugPrint('The application might crash or fail to perform certain tasks.');
+      }
+    }
+
+    // Initialize FFI
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  } else if (Platform.isLinux) {
     // Initialize FFI
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -27,7 +44,9 @@ void main() async {
 
   try {
     debugPrint('Initializing Firebase...');
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     debugPrint('Firebase initialized successfully');
   } catch (e, stackTrace) {
     debugPrint('Firebase initialization failed: $e');

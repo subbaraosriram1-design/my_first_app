@@ -23,7 +23,7 @@ class RenderCVRenderer {
                 ),
                 if (data['linkedin'] != null || data['github'] != null)
                   pw.Text(
-                    '${data['linkedin'] ?? ''} ${data['github'] != null ? '| ' + data['github'] : ''}',
+                    '${data['linkedin'] ?? ''} ${data['github'] != null ? "| ${data['github']}" : ''}',
                     style: pw.TextStyle(font: serifNormal, fontSize: 10, color: PdfColors.blue800)
                   ),
                 pw.SizedBox(height: 10),

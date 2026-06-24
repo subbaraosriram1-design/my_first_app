@@ -128,7 +128,7 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
       
       // 4. Automatically update the Roadmap with recommended skills (Merge, don't overwrite)
       if (plan['required_skills'] != null) {
-        final List<dynamic> suggestedSkills = plan['required_skills'];
+        final List<dynamic> suggestedSkills = plan['required_skills'] is List ? plan['required_skills'] : [];
         final Map<String, dynamic> careerRoadmaps = Map<String, dynamic>.from(userData['careerRoadmaps'] ?? {});
         final Map<String, dynamic> deletedSkills = Map<String, dynamic>.from(userData['deletedSkills'] ?? {});
         
@@ -136,8 +136,10 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
         List<String> deletedList = List<String>.from(deletedSkills[career] ?? []);
 
         final List<String> newSkillNames = suggestedSkills
+            .whereType<Map>()
             .where((s) => s['already_mastered'] != true)
-            .map((s) => s['name'].toString())
+            .map((s) => s['name']?.toString() ?? '')
+            .where((name) => name.isNotEmpty)
             .toList();
 
         for (var skill in newSkillNames) {
@@ -411,6 +413,23 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
 
     if (_careerAnalysis == null) return const SizedBox.shrink();
 
+    // Safe casting for strengths and opportunities
+    List<Map<String, dynamic>> strengths = [];
+    if (_careerAnalysis!['strengths'] is List) {
+      strengths = (_careerAnalysis!['strengths'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
+    List<Map<String, dynamic>> opportunities = [];
+    if (_careerAnalysis!['opportunities'] is List) {
+      opportunities = (_careerAnalysis!['opportunities'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -425,7 +444,7 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
         const SizedBox(height: 16),
         _buildAnalysisCategory(
           title: 'Your Strengths',
-          items: List<Map<String, dynamic>>.from(_careerAnalysis!['strengths'] ?? []),
+          items: strengths,
           icon: Icons.check_circle,
           color: const Color(0xFF10B981),
           isSmallScreen: isSmallScreen,
@@ -433,7 +452,7 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
         const SizedBox(height: 24),
         _buildAnalysisCategory(
           title: 'Opportunities to Shine',
-          items: List<Map<String, dynamic>>.from(_careerAnalysis!['opportunities'] ?? []),
+          items: opportunities,
           icon: Icons.lightbulb,
           color: Colors.orange,
           isSmallScreen: isSmallScreen,
@@ -448,7 +467,7 @@ class _AiInsightsScreenState extends State<AiInsightsScreen> {
               border: Border.all(color: const Color(0xFF10B981).withAlpha(30)),
             ),
             child: Text(
-              _careerAnalysis!['closing_thought'],
+              _careerAnalysis!['closing_thought'].toString(),
               style: GoogleFonts.poppins(
                 fontSize: 13,
                 fontStyle: FontStyle.italic,

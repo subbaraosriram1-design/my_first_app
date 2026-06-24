@@ -170,7 +170,19 @@ class GroqAiService implements AiService {
       """;
 
       final result = await _callAi(prompt);
-      if (result != null) return json.decode(_stripMarkdown(result));
+      if (result != null) {
+        final decoded = json.decode(_stripMarkdown(result));
+        if (decoded is Map<String, dynamic>) {
+          return {
+            'achievements': decoded['achievements']?.toString() ?? '',
+            'gap_analysis': decoded['gap_analysis']?.toString() ?? '',
+            'steps': decoded['steps'] is List ? decoded['steps'] : [],
+            'timeline': decoded['timeline']?.toString() ?? '',
+            'industry_news': decoded['industry_news'] is List ? decoded['industry_news'] : [],
+            'required_skills': decoded['required_skills'] is List ? decoded['required_skills'] : [],
+          };
+        }
+      }
     } catch (e) {
       debugPrint("Error in getDetailedCareerPlan: $e");
     }
@@ -192,9 +204,18 @@ class GroqAiService implements AiService {
   @override
   Future<Map<String, dynamic>> getCareerAnalysis(Map<String, dynamic> userData, String primaryInterest) async {
     try {
-      final prompt = "Analyze user profile for $primaryInterest. Return JSON with 'strengths' and 'opportunities' lists.";
+      final prompt = "Analyze user profile for $primaryInterest. Return JSON with 'strengths' and 'opportunities' lists (each item has 'title' and 'description' keys), and a 'closing_thought' string.";
       final result = await _callAi(prompt);
-      if (result != null) return json.decode(_stripMarkdown(result));
+      if (result != null) {
+        final decoded = json.decode(_stripMarkdown(result));
+        if (decoded is Map<String, dynamic>) {
+          return {
+            'strengths': decoded['strengths'] is List ? decoded['strengths'] : [],
+            'opportunities': decoded['opportunities'] is List ? decoded['opportunities'] : [],
+            'closing_thought': decoded['closing_thought']?.toString() ?? '',
+          };
+        }
+      }
     } catch (e) {
       debugPrint("Error in getCareerAnalysis: $e");
     }

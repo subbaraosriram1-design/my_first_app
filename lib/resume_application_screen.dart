@@ -40,6 +40,7 @@ class _ResumeApplicationScreenState extends State<ResumeApplicationScreen> {
     if (userId != null) {
       setState(() => _isLoading = true);
       final data = await FirebaseService.instance.getResume(userId);
+      if (!mounted) return;
       if (data != null) {
         setState(() {
           _userData = ResumeData.fromFirestore(data);
@@ -174,7 +175,7 @@ class _ResumeApplicationScreenState extends State<ResumeApplicationScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))
         ],
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -189,7 +190,7 @@ class _ResumeApplicationScreenState extends State<ResumeApplicationScreen> {
           const Divider(height: 32),
 
           // Sections
-          ...sections.map((s) => _buildSection(s)).toList(),
+          ...sections.map((s) => _buildSection(s)),
         ],
       ),
     );
@@ -226,7 +227,7 @@ class _ResumeApplicationScreenState extends State<ResumeApplicationScreen> {
         runSpacing: 8,
         children: data.map((item) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
           child: Text(item.toString(), style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF10B981), fontWeight: FontWeight.w500)),
         )).toList(),
       );

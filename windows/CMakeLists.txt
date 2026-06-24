@@ -2,6 +2,15 @@
 cmake_minimum_required(VERSION 3.15)
 project(my_first_app LANGUAGES CXX)
 
+# Force minimum policy version for internal dependencies like Firebase SDK
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
+# Silence deprecation errors for newer Visual Studio versions (needed for permission_handler)
+add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
+# Prevent "INSTALL" step from failing due to file locks or permission issues
+set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY TRUE)
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "my_first_app")
