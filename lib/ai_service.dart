@@ -404,14 +404,14 @@ class GroqAiService implements AiService {
         3. Match the visual hierarchy of the attached template exactly.
         4. If user data is missing a section that exists in the template, generate professional placeholders.
         5. Output only the code.
-        6. Create same style in provided in attachemnt
+        6. Create same style in provided in attachment
       """;
       
       final result = await _callAi(prompt, base64Image: base64Image);
-      return _extractHtml(result ?? "<html><body>Error generating resume</body></html>");
+      return _extractHtml(result ?? "<html><body lang='en'>Error generating resume</body></html>");
     } catch (e) {
       debugPrint("Error in generateHtmlResume: $e");
-      return "<html><body>Exception: $e</body></html>";
+      return "<html><body lang='en'>Exception: $e</body></html>";
     }
   }
 

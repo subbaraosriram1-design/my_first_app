@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform, File;
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'firebase_options.dart';
 import 'login_page.dart';
 import 'career_profile_screen.dart';
@@ -24,7 +23,7 @@ void main() async {
     final exePath = Platform.resolvedExecutable;
     final exeDir = File(exePath).parent.path;
     
-    final essentialDlls = ['pdfium.dll', 'sqlite3.dll', 'flutter_windows.dll'];
+    final essentialDlls = ['pdfium.dll', 'flutter_windows.dll'];
     for (final dll in essentialDlls) {
       final dllFile = File('$exeDir/$dll');
       if (!dllFile.existsSync()) {
@@ -32,14 +31,6 @@ void main() async {
         debugPrint('The application might crash or fail to perform certain tasks.');
       }
     }
-
-    // Initialize FFI
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  } else if (Platform.isLinux) {
-    // Initialize FFI
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
   }
 
   try {

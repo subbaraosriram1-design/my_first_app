@@ -12,7 +12,6 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  sqflite: ^2.4.1
   path: ^1.9.1
   crypto: ^3.0.6
   image_picker: ^1.1.2
@@ -34,10 +33,10 @@ dependencies:
   docx_template: ^0.4.0
   docx_to_text: ^1.0.1
   share_plus: ^10.1.4
+  package_info_plus: ^9.0.1
+  wakelock_plus: ^1.5.2
   flutter_html: ^3.0.0-beta.2
   flutter_widget_from_html: ^0.10.0
-  sqflite_common_ffi: ^2.3.3
-  sqlite3_flutter_libs: ^0.5.24
 
 dev_dependencies:
   flutter_test:
