@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform, File;
 import 'firebase_options.dart';
 import 'login_page.dart';
@@ -18,7 +19,7 @@ import 'college_suggestions_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  if (Platform.isWindows) {
+  if (!kIsWeb && Platform.isWindows) {
     // Check for essential DLLs on Windows
     final exePath = Platform.resolvedExecutable;
     final exeDir = File(exePath).parent.path;
